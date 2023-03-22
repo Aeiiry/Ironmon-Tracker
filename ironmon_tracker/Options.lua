@@ -45,6 +45,7 @@ Options = {
 	["Enable restore points"] = true,
 	["Enable crash recovery"] = true,
 	["Enable custom extensions"] = true,
+	["Calculate effective dmg/acc"] = true,
 	["Show Team View"] = false,
 	["Show Pre Evolutions"] = false,
 	["Use Custom Trainer Names"] = false,
