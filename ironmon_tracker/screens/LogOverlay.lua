@@ -1426,9 +1426,9 @@ function LogOverlay.buildPokemonZoomButtons(data)
 						prefferredCategory = "Special"
 					end
 					if prefferredCategory == "Physical" and MoveData.Moves[self.moveId].category == MoveData.Categories.PHYSICAL then
-						Drawing.drawChevron(self.box[1] + moveCategoryOffset + 8, self.box[2]-1, 2, 1, 1, "up", true)
+						Drawing.drawChevron(self.box[1] + moveCategoryOffset + 8, self.box[2]-1, 2, 1, 1, "up",Theme.COLORS["Positive text"])
 					elseif prefferredCategory == "Special" and MoveData.Moves[self.moveId].category == MoveData.Categories.SPECIAL then
-						Drawing.drawChevron(self.box[1] + moveCategoryOffset + 8, self.box[2]-1, 2, 1, 1, "up", true)
+						Drawing.drawChevron(self.box[1] + moveCategoryOffset + 8, self.box[2]-1, 2, 1, 1, "up", Theme.COLORS["Positive text"])
 					end
 				end
 			end,
