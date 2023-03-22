@@ -1139,6 +1139,51 @@ function TrackerScreen.drawStatsArea(data)
 		if data.x.extras.lowerleft then gui.drawPixel(x + 1, y + h - 1, borderColor) end
 		if data.x.extras.lowerright then gui.drawPixel(x + w - 1, y + h - 1, borderColor) end
 	end
+	local highestStatKeys = {}
+	local lowestStatKeys = {}
+	local intermediateInsteadOfNegative = false
+	if Tracker.Data.isViewingOwn then
+		-- Loop through stats to find highest and lowest for coloration
+		local highestStat = 0
+		local lowestStat = 999
+
+
+		local statKeys = Constants.OrderedLists.STATSTAGES
+		local statValues = {
+			{ statKeys[2]:lower(), data.p[statKeys[2]:lower()] },
+			{ statKeys[3]:lower(), data.p[statKeys[3]:lower()] },
+			{ statKeys[4]:lower(), data.p[statKeys[4]:lower()] },
+			{ statKeys[5]:lower(), data.p[statKeys[5]:lower()] },
+			{ statKeys[6]:lower(), data.p[statKeys[6]:lower()] }
+		}
+
+		-- Find highest and lowest stats
+		for _, stat in ipairs(statValues) do
+			if stat[2] > highestStat then
+				highestStat = stat[2]
+			end
+
+			if stat[2] < lowestStat then
+				lowestStat = stat[2]
+			end
+		end
+		local validRange = 0.15
+		-- Find all stats that are within 10% of the highest and lowest stats, and add them to the list
+		for _, stat in ipairs(statValues) do
+			if stat[2] >= highestStat * (1 - validRange) then
+				table.insert(highestStatKeys, stat[1])
+			end
+
+			if stat[2] <= lowestStat * (1 + validRange) then
+				table.insert(lowestStatKeys, stat[1])
+			end
+		end
+		local intermediateStatThreshold = 0.5
+		-- If the lowest stat is within a larger percentage of the highest stat, use intermediate instead of lowest
+		if lowestStat >= highestStat * (1 - intermediateStatThreshold) then
+			intermediateInsteadOfNegative = true
+		end
+	end
 
 	-- Draw the six primary stats
 	local statLabels = {
@@ -1150,15 +1195,15 @@ function TrackerScreen.drawStatsArea(data)
 		["SPE"] = Resources.TrackerScreen.StatSPE,
 	}
 	for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
-		local textColor = Theme.COLORS["Default text"]
+		local nautreColor = Theme.COLORS["Default text"]
 		local natureSymbol = ""
 
 		if Battle.isViewingOwn then
 			if statKey == data.p.positivestat then
-				textColor = Theme.COLORS["Positive text"]
+				nautreColor = Theme.COLORS["Positive text"]
 				natureSymbol = "+"
 			elseif statKey == data.p.negativestat then
-				textColor = Theme.COLORS["Negative text"]
+				nautreColor = Theme.COLORS["Negative text"]
 				natureSymbol = Constants.BLANKLINE
 			end
 		end
@@ -1169,8 +1214,8 @@ function TrackerScreen.drawStatsArea(data)
 		end
 
 		-- Draw stat label and nature symbol next to it
-		Drawing.drawText(statOffsetX, statOffsetY, statLabels[statKey:upper()], textColor, shadowcolor)
-		Drawing.drawText(statOffsetX + 16 + langOffset, statOffsetY - 1, natureSymbol, textColor, nil, 5, Constants.Font.FAMILY)
+		Drawing.drawText(statOffsetX, statOffsetY, statKey:upper(), nautreColor, shadowcolor)
+		Drawing.drawText(statOffsetX + 16, statOffsetY - 1, natureSymbol, nautreColor, nil, 5, Constants.Font.FAMILY)
 
 		-- Draw stat battle increases/decreases, stages range from -6 to +6
 		if Battle.inActiveBattle() then
@@ -1181,7 +1226,17 @@ function TrackerScreen.drawStatsArea(data)
 		-- Draw stat value, or the stat tracking box if enemy Pokemon
 		if Battle.isViewingOwn then
 			local statValueText = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])
-			Drawing.drawNumber(statOffsetX + 25, statOffsetY, statValueText, 3, textColor, shadowcolor)
+			local statColor = Theme.COLORS["Default text"]
+			if Utils.table_contains(highestStatKeys, statKey:lower()) then
+				statColor = Theme.COLORS["Positive text"]
+			elseif Utils.table_contains(lowestStatKeys, statKey:lower()) then
+				if intermediateInsteadOfNegative then
+					statColor = Theme.COLORS["Intermediate text"]
+				else
+					statColor = Theme.COLORS["Negative text"]
+				end
+			end
+			Drawing.drawNumber(statOffsetX + 25, statOffsetY, statValueText, 3, statColor, shadowcolor)
 		else
 			if Options["Open Book Play Mode"] then
 				local bstSpread = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])

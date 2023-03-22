@@ -194,6 +194,18 @@ function Utils.formatUTF8(format, ...)
 	)
 end
 
+-- tbl = table to search |
+-- x = value to search for |
+-- Returns true if the table contains the value, false otherwise
+function Utils.table_contains(tbl, x)
+    local found = false
+    for _, v in pairs(tbl) do
+        if v == x then
+            found = true
+        end
+    end
+    return found
+end
 -- Safely formats the text and encodes any special characters (if incompatible with the emulator)
 function Utils.formatSpecialCharacters(text)
 	if Utils.isNilOrEmpty(text) then return "" end
