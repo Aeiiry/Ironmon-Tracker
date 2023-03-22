@@ -40,6 +40,7 @@ Options = {
 	["Show on new game screen"] = false,
 	["Enable restore points"] = true,
 	["Enable custom extensions"] = false,
+	["Calculate effective dmg/acc"] = true,
 	["Show Team View"] = false,
 	["Show Pre Evolutions"] = false,
 

@@ -137,6 +137,7 @@ Constants.OrderedLists = {
 		"Enable custom extensions",
 		"Show Team View",
 		"Show Pre Evolutions",
+		"Calculate effective dmg/acc",
 	},
 	CONTROLS = {
 		"Load next seed",
@@ -173,6 +174,37 @@ Constants.OrderedLists = {
 		"USS Galactic",
 		"Cozy Fall Leaves",
 	},
+	STAT_STAGES_ATK_DEF_SPA_SPD_SPE = {
+		{ 25,  100 }, -- -6
+		{ 28,  100 }, -- -5
+		{ 33,  100 }, -- -4
+		{ 40,  100 }, -- -3
+		{ 50,  100 }, -- -2
+		{ 66,  100 }, -- -1
+		{ 100, 100 }, -- 0
+		{ 150, 100 }, -- 1
+		{ 200, 100 }, -- 2
+		{ 250, 100 }, -- 3
+		{ 300, 100 }, -- 4
+		{ 350, 100 }, -- 5
+		{ 400, 100 }, -- 6
+	},
+	STAT_STAGES_ACC_EVA = {
+		{ 33,  100 }, -- -6
+		{ 36,  100 }, -- -5
+		{ 43,  100 }, -- -4
+		{ 50,  100 }, -- -3
+		{ 60,  100 }, -- -2
+		{ 75,  100 }, -- -1
+		{ 1,   1 }, -- 0
+		{ 133, 100 }, -- +1
+		{ 166, 100 }, -- +2
+		{ 2,   1 }, -- +3
+		{ 233, 100 }, -- +4
+		{ 133, 50 }, -- +5
+		{ 3,   1 } -- +6
+	},
+	STAT_STAGES_DEFAULT = { hp = 6, atk = 6, def = 6, spa = 6, spd = 6, spe = 6, acc = 6, eva = 6 }
 }
 
 Constants.PixelImages = {
