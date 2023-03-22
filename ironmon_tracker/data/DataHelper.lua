@@ -348,7 +348,9 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 
 	return data
 end
-
+---
+---@param pokemonID integer
+---@return table
 function DataHelper.buildPokemonInfoDisplay(pokemonID)
 	local data = {}
 	data.p = {} -- data about the Pokemon itself

@@ -174,6 +174,22 @@ Constants.OrderedLists = {
 		"USS Galactic",
 		"Cozy Fall Leaves",
 	},
+	--- Taken from the Emerald Decomp
+	STAT_STAGE_RATIOS = {
+		{ 10, 40 }, -- -6, MIN_STAT_STAGE
+		{ 10, 35 }, -- -5
+		{ 10, 30 }, -- -4
+		{ 10, 25 }, -- -3
+		{ 10, 20 }, -- -2
+		{ 10, 15 }, -- -1
+		{ 10, 10 }, --  0, DEFAULT_STAT_STAGE
+		{ 15, 10 }, -- +1
+		{ 20, 10 }, -- +2
+		{ 25, 10 }, -- +3
+		{ 30, 10 }, -- +4
+		{ 35, 10 }, -- +5
+		{ 40, 10 }, -- +6, MAX_STAT_STAGE
+	}
 	STAT_STAGES_ATK_DEF_SPA_SPD_SPE = {
 		{ 25,  100 }, -- -6
 		{ 28,  100 }, -- -5

@@ -841,6 +841,30 @@ function TrackerScreen.drawPokemonInfoArea(data)
 		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11, Constants.SCREEN.MARGIN + 63, routeText, Theme.COLORS["Default text"], shadowcolor)
 	end
 end
+--- Calculates the actual stats of the Pokemon being tracked. Including stat stages, huge power, plus/minus, guts, hustle, choice band, burn, etc.
+--- @param data table The data table of the Pokemon being viewed
+function TrackerScreen.calculateActualStats(data)
+	-- Stat stages
+	local stats = {}
+	local statStageRatios = Constants.OrderedLists.STAT_STAGE_RATIOS
+	local statStages = data.p.stages
+	for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
+
+		stats[statKey] = data.p[statKey]
+		if statStages[statKey] ~= 6 then
+
+			local statModDividendDivisor = statStageRatios[statStages[statKey] + 1]
+			local statMod = statModDividendDivisor[1] / statModDividendDivisor[2]
+
+			stats[statKey] = math.floor(stats[statKey] * statMod+0.5)
+		end
+
+		data.p[statKey] = stats[statKey]
+	end
+
+
+return data
+end
 
 function TrackerScreen.drawStatsArea(data)
 	local shadowcolor = Utils.calcShadowColor(Theme.COLORS["Upper box background"])
@@ -848,48 +872,48 @@ function TrackerScreen.drawStatsArea(data)
 	local statOffsetX = Constants.SCREEN.WIDTH + statBoxWidth + 1
 	local statOffsetY = 7
 
+	data = TrackerScreen.calculateActualStats(data)
+
 	-- Draw the border box for the Stats area
-	gui.drawRectangle(Constants.SCREEN.WIDTH + statBoxWidth, 5, Constants.SCREEN.RIGHT_GAP - statBoxWidth - 5, 75, Theme.COLORS["Upper box border"], Theme.COLORS["Upper box background"])
+	gui.drawRectangle(Constants.SCREEN.WIDTH + statBoxWidth, 5, Constants.SCREEN.RIGHT_GAP - statBoxWidth - 5, 75,
+		Theme.COLORS["Upper box border"], Theme.COLORS["Upper box background"])
 	local highestStatKeys = {}
 	local lowestStatKeys = {}
 	local intermediateInsteadOfNegative = false
 	if Tracker.Data.isViewingOwn then
-		-- Loop through stats to find highest and lowest for coloration
 		local highestStat = 0
-		local lowestStat = 999
-
-
+		local lowestStat = math.huge
+		local validRange = 0.15
+		local intermediateStatThreshold = 0.5
 		local statKeys = Constants.OrderedLists.STATSTAGES
-		local statValues = {
-			{ statKeys[2]:lower(), data.p[statKeys[2]:lower()] },
-			{ statKeys[3]:lower(), data.p[statKeys[3]:lower()] },
-			{ statKeys[4]:lower(), data.p[statKeys[4]:lower()] },
-			{ statKeys[5]:lower(), data.p[statKeys[5]:lower()] },
-			{ statKeys[6]:lower(), data.p[statKeys[6]:lower()] }
-		}
+		local statValues = {}
+
+		for i = 2, #statKeys do
+			table.insert(statValues, {
+				statKeys[i]:lower(),
+				data.p[statKeys[i]:lower()]
+			})
+		end
 
 		-- Find highest and lowest stats
-		for _, stat in ipairs(statValues) do
-			if stat[2] > highestStat then
-				highestStat = stat[2]
-			end
-
-			if stat[2] < lowestStat then
-				lowestStat = stat[2]
-			end
+		for i = 1, #statValues do
+			local stat = statValues[i][2]
+			highestStat = math.max(highestStat, stat)
+			lowestStat = math.min(lowestStat, stat)
 		end
-		local validRange = 0.15
 		-- Find all stats that are within 10% of the highest and lowest stats, and add them to the list
-		for _, stat in ipairs(statValues) do
-			if stat[2] >= highestStat * (1 - validRange) then
-				table.insert(highestStatKeys, stat[1])
+		for i = 1, #statValues do
+			local stat = statValues[i][2]
+			local statKey = statValues[i][1]
+
+			if stat >= highestStat * (1 - validRange) then
+				table.insert(highestStatKeys, statKey)
 			end
 
-			if stat[2] <= lowestStat * (1 + validRange) then
-				table.insert(lowestStatKeys, stat[1])
+			if stat <= lowestStat * (1 + validRange) then
+				table.insert(lowestStatKeys, statKey)
 			end
 		end
-		local intermediateStatThreshold = 0.5
 		-- If the lowest stat is within a larger percentage of the highest stat, use intermediate instead of lowest
 		if lowestStat >= highestStat * (1 - intermediateStatThreshold) then
 			intermediateInsteadOfNegative = true
