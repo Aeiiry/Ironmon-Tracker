@@ -1083,29 +1083,53 @@ function TrackerScreen.drawPokemonInfoArea(data)
 		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11, Constants.SCREEN.MARGIN + 63, routeText, Theme.COLORS["Default text"], shadowcolor)
 	end
 end
---- Calculates the actual stats of the Pokemon being tracked. Including stat stages, huge power, plus/minus, guts, hustle, choice band, burn, etc.
+--- Calculates the actual stats of the Pokemon being tracked. Including stat stages, huge power, plus/minus, guts, hustle, choice band, burn, paralyze etc.
 --- @param data table The data table of the Pokemon being viewed
 function TrackerScreen.calculateActualStats(data)
-	-- Stat stages
-	local stats = {}
-	local statStageRatios = Constants.OrderedLists.STAT_STAGE_RATIOS
-	local statStages = data.p.stages
-	for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
+	if Tracker.Data.isViewingOwn then
+		local stats = {}
+		local statStageRatios = Constants.OrderedLists.STAT_STAGE_RATIOS
+		local statStages = data.p.stages
+		local ability = data.p.line2
+		for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
+			stats[statKey] = data.p[statKey]
 
-		stats[statKey] = data.p[statKey]
-		if statStages[statKey] ~= 6 then
+			-- Applies stat stages modifications
+			if statStages[statKey] ~= 6 then
+				local statModDividend, statModDivisor = unpack(statStageRatios[statStages[statKey] + 1])
+				local statMod = statModDividend / statModDivisor
+				stats[statKey] = stats[statKey] * statMod
+			end
 
-			local statModDividendDivisor = statStageRatios[statStages[statKey] + 1]
-			local statMod = statModDividendDivisor[1] / statModDividendDivisor[2]
+			-- Applies modifications only affecting attack stat
+			if statKey == "atk" then
+				local isGutsActive = ability == "Guts" and data.p.status ~= "" and data.p.status ~= "FNT"
+				local isChoiceBanded = data.item and data.item.name == "Choice Band"
+				local isHustleActive = ability == "Hustle"
+				local isHugePurePowerActive = ability == "Huge Power" or ability == "Pure Power"
 
-			stats[statKey] = math.floor(stats[statKey] * statMod+0.5)
+				if isGutsActive then
+					stats[statKey] = stats[statKey] * 1.5
+				elseif isHustleActive then
+					stats[statKey] = stats[statKey] * 1.5
+				elseif isHugePurePowerActive then
+					stats[statKey] = stats[statKey] * 2
+				end
+
+				if isChoiceBanded then
+					stats[statKey] = stats[statKey] * 1.5
+				end
+			elseif statKey =="def" then
+				--Marvel Scale
+				if ability == "Marvel Scale" and data.p.status ~= "" and data.p.status ~= "FNT" then
+					stats[statKey] = stats[statKey] * 1.5
+				end
+			end
+
+			data.p[statKey] = math.floor(stats[statKey] + 0.5)
 		end
-
-		data.p[statKey] = stats[statKey]
 	end
-
-
-return data
+	return data
 end
 
 function TrackerScreen.drawStatsArea(data)
