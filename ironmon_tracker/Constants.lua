@@ -189,7 +189,7 @@ Constants.OrderedLists = {
 		{ 30, 10 }, -- +4
 		{ 35, 10 }, -- +5
 		{ 40, 10 }, -- +6, MAX_STAT_STAGE
-	}
+	},
 	STAT_STAGES_ATK_DEF_SPA_SPD_SPE = {
 		{ 25,  100 }, -- -6
 		{ 28,  100 }, -- -5
