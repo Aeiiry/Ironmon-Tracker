@@ -33,7 +33,8 @@ LogOverlay = {
 	currentEvoSet = 1, -- Ideally move this somewhere else
 	prevEvosPerSet = 1,
 	evosPerSet = 3, -- Ideally move this somewhere else
-	preEvoSetting = "Show Pre Evolutions"
+	preEvoSetting = "Show Pre Evolutions",
+	isGameOver = false, -- Set to true when game is over, so we known to show game over screen if X is pressed
 }
 
 LogOverlay.Windower = {
@@ -272,7 +273,14 @@ LogOverlay.TabBarButtons = {
 			if self.image == Constants.PixelImages.CLOSE then
 				LogOverlay.TabHistory = {}
 				LogOverlay.isDisplayed = false
-				Program.changeScreenView(GameOverScreen)
+				if LogOverlay.isGameOver then
+					Program.changeScreenView(GameOverScreen)
+				elseif not Program.isValidMapLocation() then
+					-- If the game hasn't started yet
+					Program.changeScreenView(StartupScreen)
+				else
+					Program.changeScreenView(TrackerScreen)
+				end
 			else -- Constants.PixelImages.PREVIOUS_BUTTON
 				LogOverlay.Windower:changeTab(LogOverlay.Tabs.GO_BACK)
 				Program.redraw(true)
@@ -428,7 +436,6 @@ LogOverlay.NavFilters = {
 }
 
 function LogOverlay.initialize()
-
 	LogOverlay.TabHistory = {}
 
 	LogOverlay.Buttons.PreEvoSettingButton.toggleState = Options[LogOverlay.preEvoSetting]
@@ -452,26 +459,6 @@ function LogOverlay.initialize()
 
 	LogOverlay.Buttons.CurrentPage:updateText()
 	LogOverlay.Buttons.PreEvoSettingButton.toggleState = Options["Show Pre Evolutions"]
-end
-
-function LogOverlay.parseAndDisplay(logpath)
-	-- Check first if data has already been loaded and parsed
-	if RandomizerLog.Data.Settings ~= nil or RandomizerLog.parseLog(logpath) then
-		LogOverlay.isDisplayed = true
-		LogOverlay.buildPagedButtons()
-		LogOverlay.Windower:changeTab(LogOverlay.Tabs.POKEMON)
-		local leadPokemon = Tracker.getPokemon(1, true) or Tracker.getDefaultPokemon()
-		if PokemonData.isValid(leadPokemon.pokemonID) then
-			LogOverlay.Windower:changeTab(LogOverlay.Tabs.POKEMON_ZOOM, 1, 1, leadPokemon.pokemonID)
-			Program.redraw(true)
-		else
-			InfoScreen.changeScreenView(InfoScreen.Screens.POKEMON_INFO, 1) -- Show Bulbasaur by default; implied redraw
-		end
-	else
-		LogOverlay.isDisplayed = false
-	end
-
-	return LogOverlay.isDisplayed
 end
 
 -- Builds out paged-buttons that are shown on the log viewer overlay based on the parse data
@@ -2049,4 +2036,127 @@ function LogOverlay.drawTrainerZoomed(x, y, width, height)
 	end
 
 	return borderColor, shadowcolor
+end
+
+function LogOverlay.viewLogFile(postfix)
+	local logpath = LogOverlay.getLogFileAutodetected(postfix)
+
+	-- Check if there exists a parsed log with the same postfix as the one being requested
+	local hasParsedThisLog = RandomizerLog.Data.Settings ~= nil and (RandomizerLog.loadedLogPath or ""):find(postfix, 1, true) ~= nil
+
+	-- Only prompt for a new file if no autodetect and nothing has been parsed yet
+	if logpath == nil and not hasParsedThisLog then
+		logpath = LogOverlay.getLogFileFromPrompt()
+	end
+
+	LogOverlay.parseAndDisplay(logpath)
+end
+
+--- Attempts to determine the log file that matches the currently loaded rom. If not match or can't find, returns nil
+--- @param postFix string The file's postFix, most likely FileManager.PostFixes.AUTORANDOMIZED or FileManager.PostFixes.PREVIOUSATTEMPT
+--- @return string|nil
+function LogOverlay.getLogFileAutodetected(postFix)
+	postFix = postFix or FileManager.PostFixes.AUTORANDOMIZED
+
+	local romname, rompath
+	if Options["Use premade ROMs"] and Options.FILES["ROMs Folder"] ~= nil then
+		-- First make sure the ROMs Folder ends with a slash
+		if Options.FILES["ROMs Folder"]:sub(-1) ~= FileManager.slash then
+			Options.FILES["ROMs Folder"] = Options.FILES["ROMs Folder"] .. FileManager.slash
+		end
+
+		romname = GameSettings.getRomName() or ""
+		if postFix == FileManager.PostFixes.PREVIOUSATTEMPT then
+			local currentRomPrefix = string.match(romname, '[^0-9]+') or ""
+			local currentRomNumber = string.match(romname, '[0-9]+') or "0"
+			-- Decrement to the previous ROM and determine its full file path
+			local prevRomName = string.format(currentRomPrefix .. "%0" .. string.len(currentRomNumber) .. "d", tonumber(currentRomNumber) - 1)
+			romname = prevRomName
+		end
+
+		rompath = Options.FILES["ROMs Folder"] .. romname .. FileManager.Extensions.GBA_ROM
+		if not FileManager.fileExists(rompath) then
+			romname = romname:gsub(" ", "_")
+			rompath = Options.FILES["ROMs Folder"] .. romname .. FileManager.Extensions.GBA_ROM
+		end
+	elseif Options["Generate ROM each time"] then
+		-- Filename of the AutoRandomized ROM is based on the settings file (for cases of playing Kaizo + Survival + Others)
+		local quickloadFiles = Main.GetQuickloadFiles()
+		local settingsFileName = FileManager.extractFileNameFromPath(quickloadFiles.settingsList[1] or "")
+		romname = string.format("%s %s%s", settingsFileName, postFix, FileManager.Extensions.GBA_ROM)
+		rompath = FileManager.prependDir(romname)
+	end
+
+	-- Check if the name of the rom being played on the emulator matches the name of the autodetected rom
+	if Main.IsOnBizhawk() then
+		local plainFormatter = function(filename)
+			-- strip out any auto appended postfixes
+			filename = filename:gsub(FileManager.PostFixes.AUTORANDOMIZED, "")
+			filename = filename:gsub(FileManager.PostFixes.PREVIOUSATTEMPT, "")
+			filename = filename:gsub("%.gba", "")
+			filename = filename:gsub(" ", "_")
+			filename = filename:gsub("%d", "")
+			return filename:lower()
+		end
+		local loadedRomName = GameSettings.getRomName() or "N/A"
+		loadedRomName = plainFormatter(loadedRomName .. FileManager.Extensions.GBA_ROM)
+		local autodetectedName = plainFormatter(romname or "")
+		if loadedRomName ~= autodetectedName then
+			return nil
+		end
+	end
+
+	-- Return the full file path of the log file, or nil if it can't be found
+	return FileManager.getPathIfExists((rompath or "") .. FileManager.Extensions.RANDOMIZER_LOGFILE)
+end
+
+--- Prompts user to select a log file to parse
+--- @return string|nil
+function LogOverlay.getLogFileFromPrompt()
+	local suggestedFileName = (GameSettings.getRomName() or "") .. FileManager.Extensions.RANDOMIZER_LOGFILE
+	local filterOptions = "Randomizer Log (*.log)|*.log|All files (*.*)|*.*"
+
+	local workingDir = FileManager.dir
+	if workingDir ~= "" then
+		workingDir = workingDir:sub(1, -2) -- remove trailing slash
+	end
+
+	Utils.tempDisableBizhawkSound()
+	local filepath = forms.openfile(suggestedFileName, workingDir, filterOptions)
+	if filepath == "" then
+		filepath = nil
+	end
+	Utils.tempEnableBizhawkSound()
+
+	return filepath
+end
+
+function LogOverlay.parseAndDisplay(logpath)
+	-- Check for what log we're trying to display, and if it's already been parsed
+	if logpath ~= nil and RandomizerLog.loadedLogPath ~= logpath then
+		RandomizerLog.Data = {}
+		RandomizerLog.loadedLogPath = logpath
+	end
+
+	-- If data has already been loaded and parsed, use that first, otherwise try parsing the provided log file
+	if RandomizerLog.Data.Settings ~= nil then
+		LogOverlay.isDisplayed = true
+	else
+		LogOverlay.isDisplayed = RandomizerLog.parseLog(logpath)
+	end
+
+	if LogOverlay.isDisplayed then
+		LogOverlay.buildPagedButtons()
+		LogOverlay.Windower:changeTab(LogOverlay.Tabs.POKEMON)
+
+		local leadPokemon = Tracker.getPokemon(1, true) or Tracker.getDefaultPokemon()
+		if PokemonData.isValid(leadPokemon.pokemonID) then
+			LogOverlay.Windower:changeTab(LogOverlay.Tabs.POKEMON_ZOOM, 1, 1, leadPokemon.pokemonID)
+			InfoScreen.changeScreenView(InfoScreen.Screens.POKEMON_INFO, leadPokemon.pokemonID)
+		else
+			InfoScreen.changeScreenView(InfoScreen.Screens.POKEMON_INFO, 1) -- Show Bulbasaur by default; implied redraw
+		end
+	end
+
+	return LogOverlay.isDisplayed
 end
