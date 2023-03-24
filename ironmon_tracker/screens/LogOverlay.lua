@@ -1955,9 +1955,11 @@ function LogOverlay.drawPokemonZoomed(x, y, width, height)
 		local barH = math.floor(data.p[statKey] / 255 * (statBox.height - 2) + 0.5)
 		local barY = statBox.y + statBox.height - barH - 1 -- -1/-2 for box pixel border margin
 		local barColor
-		if data.p[statKey] >= 180 then -- top ~70%
-			barColor = Theme.COLORS["Positive text"]
-		elseif data.p[statKey] <= 40 then -- bottom ~15%
+		if data.p[statKey] >= 150 then
+            barColor = Theme.COLORS["Positive text"]
+		elseif data.p[statKey] >= 100 then
+			barColor = Theme.COLORS["Intermediate text"]
+		elseif data.p[statKey] <= 50 then
 			barColor = Theme.COLORS["Negative text"]
 		else
 			barColor = textColor
