@@ -911,7 +911,7 @@ function Utils.getWeatherInfo()
 	if currentWeather ~= nil then
 		return currentWeather
 	else
-		return "None"
+		return nil
 	end
 end
 
