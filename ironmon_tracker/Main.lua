@@ -183,8 +183,7 @@ function Main.Run()
 		Main.hasRunOnce = true
 		Program.hasRunOnce = true
 
-		-- Allow emulation frame after frame until a new seed is quickloaded or a tracker update is requested
-		while not Main.loadNextSeed and not Main.updateRequested do
+		while Main.loadNextSeed == false do
 			xpcall(function() Program.mainLoop() end, FileManager.logError)
 			Main.frameAdvance()
 		end
