@@ -1,3 +1,9 @@
+# Ironmon-planner
+
+## General Information
+
+This is a branch of the ironmon tracker that is designed to be used as a planning tool, providing information about the current state of the game and the player's progress.
+
 # Ironmon-Tracker
 
 ### [General Information](#general-information) | [Supported Games](#supported-games) | [Installation](#installation) | [Latest Changes](#latest-changes) | [Contributing](#contributing)
