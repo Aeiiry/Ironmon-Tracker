@@ -2,6 +2,23 @@ Constants = {}
 
 Constants.BLANKLINE = "---"
 Constants.HIDDEN_INFO = "?"
+Constants.Weather = {
+    Names = {
+        RAIN = "Rain",
+        SAND = "Sandstorm",
+        SUN = "Harsh sunlight",
+        HAIL = "Hail"
+    },
+    ids = {
+        [1] = "Rain",
+        [5] = "Rain",
+        [8] = "Sandstorm",
+        [24] = "Sandstorm",
+        [32] = "Harsh sunlight",
+        [96] = "Harsh sunlight",
+        [128] = "Hail"
+    }
+}
 
 Constants.SCREEN = {
 	HEIGHT = 160,

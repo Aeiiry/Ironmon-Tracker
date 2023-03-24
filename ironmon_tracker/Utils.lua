@@ -578,6 +578,19 @@ function Utils.calculateEffectiveDamage(move, viewedPokemon, opposingPokemon)
 
 	local typeEffectivenessMod = move.effectiveness
 	local naiiveDamageMod = stabMod * typeEffectivenessMod
+
+	local battleWeather = Utils.getWeatherInfo()
+	local weatherNames = Constants.Weather.Names
+	if battleWeather == weatherNames.SUN and move.type == PokemonData.Types.FIRE then
+		naiiveDamageMod = naiiveDamageMod * 1.5
+	elseif battleWeather == weatherNames.SUN and move.type == PokemonData.Types.WATER then
+		naiiveDamageMod = naiiveDamageMod * 0.5
+	elseif battleWeather == weatherNames.RAIN and move.type == PokemonData.Types.FIRE then
+		naiiveDamageMod = naiiveDamageMod * 0.5
+	elseif battleWeather == weatherNames.RAIN and move.type == PokemonData.Types.WATER then
+		naiiveDamageMod = naiiveDamageMod * 1.5
+	end
+
 	movePower = naiiveDamageMod * movePower
 
 	movePower = math.floor(movePower + 0.5)
@@ -610,21 +623,6 @@ function Utils.calculateEffectiveAccuracy(move, viewedPokemon, opposingPokemon)
 	local enemyEvasionStage = opposingPokemon.statStages.eva
 
 	local accEvaStage = selfAcccuracyStage + 6 - enemyEvasionStage
-	local accStageRatios = {
-		{ 33,  100 }, -- -6
-		{ 36,  100 }, -- -5
-		{ 43,  100 }, -- -4
-		{ 50,  100 }, -- -3
-		{ 60,  100 }, -- -2
-		{ 75,  100 }, -- -1
-		{ 1,   1 }, -- 0
-		{ 133, 100 }, -- +1
-		{ 166, 100 }, -- +2
-		{ 2,   1 }, -- +3
-		{ 233, 100 }, -- +4
-		{ 133, 50 }, -- +5
-		{ 3,   1 } -- +6
-	}
 
 	local minStage = 0
 	local maxStage = 12
@@ -747,19 +745,27 @@ function Utils.calculateFriendshipBasedDamage(movePower, friendship)
 	end
 end
 
+--- Get the current weather in battle
+-- @return string The current weather
+function Utils.getWeatherInfo()
+	local weatherIds = Constants.Weather.ids
+	local battleWeather = Memory.readword(GameSettings.gBattleWeather)
+	local currentWeather = weatherIds[battleWeather]
+
+	if currentWeather ~= nil then
+		return currentWeather
+	else
+		return "None"
+	end
+end
+
+
 function Utils.calculateWeatherBall(moveType, movePower)
 	if not Battle.inBattle then
 		return moveType, movePower
 	end
 
-	local weatherIds = {
-		[1] = "Rain", [5] = "Rain",
-		[8] = "Sandstorm", [24] = "Sandstorm",
-		[32] = "Harsh sunlight", [96] = "Harsh sunlight",
-		[128] = "Hail"
-	}
-	local battleWeather = Memory.readword(GameSettings.gBattleWeather)
-	local currentWeather = weatherIds[battleWeather]
+	local currentWeather = Utils.getWeatherInfo()
 
 	if currentWeather ~= nil then
 		if currentWeather == "Rain" then
