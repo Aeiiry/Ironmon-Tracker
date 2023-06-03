@@ -1096,7 +1096,7 @@ function TrackerScreen.calculateActualStats(data)
 
 			-- Applies stat stages modifications
 			if statStages[statKey] ~= 6 then
-				local statModDividend, statModDivisor = unpack(statStageRatios[statStages[statKey] + 1])
+				local statModDividend, statModDivisor = table.unpack(statStageRatios[statStages[statKey] + 1])
 				local statMod = statModDividend / statModDivisor
 				stats[statKey] = stats[statKey] * statMod
 			end
