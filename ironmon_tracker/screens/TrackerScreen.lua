@@ -1320,46 +1320,6 @@ function TrackerScreen.drawMovesArea(data)
 	if not Theme.MOVE_TYPES_ENABLED then -- Check if move type will be drawn as a rectangle
 		moveNameOffset = moveNameOffset + 5
 	end
-	local bestMove = nil
-	if Tracker.Data.isViewingOwn then -- Check if move PP will be drawn
-		-- Determine naiive "best move" for the pokemon, based on move power and user's stats
-
-        local moveRatings = {}
-		local bestMoveRating = 0
-
-		-- Determine factor to multiply each category by, based on the pokemon's atk and spa stats
-		local atkFactor = data.p["atk"] / (data.p["atk"] + data.p["spa"])
-		console.clear()
-
-        for i, move in ipairs(data.m.moves) do
-            move.rating = 0
-			-- Check if it is a string
-            if type(move.power) ~= "string" then
-                if move.category == MoveData.Categories.PHYSICAL then
-                    move.rating = move.power * atkFactor
-                elseif move.category == MoveData.Categories.SPECIAL then
-                    move.rating = move.power * (1 - atkFactor)
-                end
-                if move.accuracy ~= Constants.BLANKLINE then
-                    move.rating = move.rating * (move.accuracy / 100)
-                end
-
-                table.insert(moveRatings, move)
-            end
-            if move.rating > bestMoveRating then
-                bestMove = move.name
-                bestMoveRating = move.rating
-            end
-        end
-
-        -- Normalise the ratings to be between 0 and 1, 1 being the best move and other moves being a fraction of that
-        for i, move in ipairs(moveRatings) do
-			move.rating = math.floor((move.rating / bestMoveRating) * 100) / 100
-			console.log(move.name .. " rating: " .. move.rating)
-		end
-	end
-
-
 
 	-- Draw all four moves
 	for i, move in ipairs(data.m.moves) do
@@ -1407,22 +1367,6 @@ function TrackerScreen.drawMovesArea(data)
 
 		local moveName = move.name .. Utils.inlineIf(move.starred, "*", "")
 
-		if Tracker.Data.isViewingOwn then
-			-- DRAW BEST MOVE INDICATOR
-			if moveName == bestMove then
-				-- Draw selection box around entire row of move
-                Drawing.drawSelectionIndicators(
-                    Constants.SCREEN.WIDTH + moveNameOffset+2,
-                    moveOffsetY+2,
-                    Utils.calcWordPixelLength(moveName)+1,
-					7,
-                    Theme.COLORS["Intermediate text"],
-                    1,
-                    3,
-					1
-			)
-			end
-		end
 		-- DRAW ALL THE MOVE INFORMATION
 		Drawing.drawText(Constants.SCREEN.WIDTH + moveNameOffset+1, moveOffsetY, moveName, moveTypeColor, shadowcolor)
 		Drawing.drawNumber(Constants.SCREEN.WIDTH + movePPOffset, moveOffsetY, move.pp, 2, Theme.COLORS["Lower box text"], shadowcolor)
