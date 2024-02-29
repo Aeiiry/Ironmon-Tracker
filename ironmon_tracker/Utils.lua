@@ -194,6 +194,18 @@ function Utils.formatUTF8(format, ...)
 	)
 end
 
+-- tbl = table to search |
+-- x = value to search for |
+-- Returns true if the table contains the value, false otherwise
+function Utils.table_contains(tbl, x)
+    local found = false
+    for _, v in pairs(tbl) do
+        if v == x then
+            found = true
+        end
+    end
+    return found
+end
 -- Safely formats the text and encodes any special characters (if incompatible with the emulator)
 function Utils.formatSpecialCharacters(text)
 	if Utils.isNilOrEmpty(text) then return "" end
@@ -704,6 +716,109 @@ function Utils.isSTAB(move, moveType, comparedTypes)
 	end
 
 	return false
+end
+
+-- Calculates a rough estimate of the damage a move will do to a Pokemon
+function Utils.calculateEffectiveDamage(move, viewedPokemon, opposingPokemon)
+	local movePower = move.power
+
+	if tonumber(movePower) == nil then
+		return movePower
+	end
+
+	local stabMod = 1
+
+	if move.isstab == true then
+		stabMod = 1.5
+	end
+
+	local typeEffectivenessMod = move.effectiveness
+	local naiiveDamageMod = stabMod * typeEffectivenessMod
+	movePower = naiiveDamageMod * movePower
+
+	movePower = math.floor(movePower + 0.5)
+
+
+	return movePower
+end
+
+function Utils.applyStatStage(stat, stage)
+	return stat * Constants.OrderedLists.STAT_STAGES_ATK_DEF_SPA_SPD_SPE[stage + 7][1] /
+	Constants.OrderedLists.STAT_STAGES_ATK_DEF_SPA_SPD_SPE[stage + 7][2]
+end
+
+-- Calculates the actual accuracy for a move based on the move's accuracy and the attacker's and defender's accuracy/evasion stages
+function Utils.calculateEffectiveAccuracy(move, viewedPokemon, opposingPokemon)
+	local moveAccuracy = move.accuracy
+	local moveCategory = move.category
+
+	if viewedPokemon == nil or opposingPokemon == nil then
+		return moveAccuracy
+	end
+
+	if tonumber(moveAccuracy) == nil then
+		return moveAccuracy
+	end
+
+
+
+	local selfAcccuracyStage = viewedPokemon.statStages.acc
+	local enemyEvasionStage = opposingPokemon.statStages.eva
+
+	local accEvaStage = selfAcccuracyStage + 6 - enemyEvasionStage
+	local accStageRatios = {
+		{ 33,  100 }, -- -6
+		{ 36,  100 }, -- -5
+		{ 43,  100 }, -- -4
+		{ 50,  100 }, -- -3
+		{ 60,  100 }, -- -2
+		{ 75,  100 }, -- -1
+		{ 1,   1 }, -- 0
+		{ 133, 100 }, -- +1
+		{ 166, 100 }, -- +2
+		{ 2,   1 }, -- +3
+		{ 233, 100 }, -- +4
+		{ 133, 50 }, -- +5
+		{ 3,   1 } -- +6
+	}
+
+	local minStage = 0
+	local maxStage = 12
+
+	if accEvaStage < minStage then
+		accEvaStage = minStage
+	elseif accEvaStage > maxStage then
+		accEvaStage = maxStage
+	end
+
+	local modifiedAccuracy = moveAccuracy * Constants.OrderedLists.STAT_STAGES_ACC_EVA[accEvaStage + 1][1] /
+		Constants.OrderedLists.STAT_STAGES_ACC_EVA[accEvaStage + 1][2]
+
+	-- Check ability is pokemon is own
+	if Tracker.Data.isViewingOwn then
+		-- Check for hustle and compound eyes
+		local abilityId = PokemonData.getAbilityId(viewedPokemon.pokemonID, viewedPokemon.abilityNum)
+
+		if abilityId ~= nil and abilityId ~= 0 then
+			local abilityName = AbilityData.Abilities[abilityId].name
+
+			if abilityName == "Hustle" and moveCategory == MoveData.Categories.PHYSICAL then
+				modifiedAccuracy = modifiedAccuracy * 0.8
+			elseif abilityName == "Compoundeyes" then
+				modifiedAccuracy = modifiedAccuracy * 1.3
+			end
+		end
+	end
+
+	if modifiedAccuracy < 0 then
+		modifiedAccuracy = 0
+	elseif modifiedAccuracy > 100 then
+		modifiedAccuracy = 100
+	end
+
+	modifiedAccuracy = math.floor(modifiedAccuracy + 0.5)
+
+	return modifiedAccuracy
 end
 
 -- For Low Kick & Grass Knot. Weight in kg. Bounds are inclusive per decompiled code.

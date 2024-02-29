@@ -1078,47 +1078,63 @@ function TrackerScreen.drawPokemonInfoArea(data)
 			Drawing.drawTrainerTeamPokeballs(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 40, Constants.SCREEN.MARGIN + 65, shadowcolor)
 		end
 
-		Drawing.drawText(routeInfoX, Constants.SCREEN.MARGIN + 53, encounterText, Theme.COLORS["Default text"], shadowcolor)
-		Drawing.drawText(routeInfoX, Constants.SCREEN.MARGIN + 63, routeText, Theme.COLORS["Default text"], shadowcolor)
+		Drawing.drawButton(TrackerScreen.Buttons.RouteDetails, shadowcolor)
+		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11, Constants.SCREEN.MARGIN + 53, encounterText, Theme.COLORS["Default text"], shadowcolor)
+		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11, Constants.SCREEN.MARGIN + 63, routeText, Theme.COLORS["Default text"], shadowcolor)
 	end
+end
+--- Calculates the actual stats of the Pokemon being tracked. Including stat stages, huge power, plus/minus, guts, hustle, choice band, burn, paralyze etc.
+--- @param data table The data table of the Pokemon being viewed
+function TrackerScreen.calculateActualStats(data)
+	if Tracker.Data.isViewingOwn then
+		local stats = {}
+		local statStageRatios = Constants.OrderedLists.STAT_STAGE_RATIOS
+		local statStages = data.p.stages
+		local ability = data.p.line2
+		for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
+			stats[statKey] = data.p[statKey]
 
-	-- POKEMON ICON (draw last to overlap anything else, if necessary)
-	SpriteData.checkForFaintingStatus(data.p.id, data.p.curHP <= 0)
-	SpriteData.checkForSleepingStatus(data.p.id, data.p.status)
-	Drawing.drawButton(TrackerScreen.Buttons.PokemonIcon, shadowcolor)
-	Drawing.drawButton(TrackerScreen.Buttons.ShinyEffect, shadowcolor)
-
-	-- STATUS ICON
-	if data.p.status ~= MiscData.StatusCodeMap[MiscData.StatusType.None] then
-		Drawing.drawStatusIcon(data.p.status, Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 30 - 16 + 1, Constants.SCREEN.MARGIN + 1)
-	end
-
-	-- GENDER ICON
-	if Options["Display gender"] and PokemonData.isValid(data.p.id) and data.p.gender ~= MiscData.Gender.UNKNOWN then
-		local gSymbol
-		if data.p.gender == MiscData.Gender.MALE then
-			gSymbol = Constants.PixelImages.MALE_SYMBOL
-		else
-			gSymbol = Constants.PixelImages.FEMALE_SYMBOL
-		end
-		local nameWidth = Utils.calcWordPixelLength(data.p.name)
-		local gX, gY, gShadow
-		local gColors = { Theme.COLORS["Default text"] }
-		-- Check if there's room to draw the symbol next to the name, otherwise overlay on the Pokemon icon
-		if nameWidth < 45 then
-			gX = Constants.SCREEN.WIDTH + 36 + nameWidth + 4
-			gY = Constants.SCREEN.MARGIN + 2
-			gShadow = shadowcolor
-		else
-			gX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 23
-			gY = Constants.SCREEN.MARGIN + 20
-			if gSymbol == Constants.PixelImages.FEMALE_SYMBOL then
-				gX = gX + 3
+			-- Applies stat stages modifications
+			if statStages[statKey] ~= 6 then
+				local statModDividend, statModDivisor = table.unpack(statStageRatios[statStages[statKey] + 1])
+				local statMod = statModDividend / statModDivisor
+				stats[statKey] = stats[statKey] * statMod
 			end
-			table.insert(gColors, Theme.COLORS["Upper box background"] - 0x40000000) -- semi-transparent
+
+			-- Applies modifications only affecting attack stat
+			if statKey == "atk" then
+				local isGutsActive = ability == "Guts" and data.p.status ~= "" and data.p.status ~= "FNT"
+				local isChoiceBanded = data.item and data.item.name == "Choice Band"
+				local isHustleActive = ability == "Hustle"
+				local isHugePurePowerActive = ability == "Huge Power" or ability == "Pure Power"
+
+				if isGutsActive then
+					stats[statKey] = stats[statKey] * 1.5
+				elseif isHustleActive then
+					stats[statKey] = stats[statKey] * 1.5
+				elseif isHugePurePowerActive then
+					stats[statKey] = stats[statKey] * 2
+				end
+
+				if isChoiceBanded then
+					stats[statKey] = stats[statKey] * 1.5
+				end
+			elseif statKey =="def" then
+				--Marvel Scale
+                if ability == "Marvel Scale" and data.p.status ~= "" and data.p.status ~= "FNT" then
+                    stats[statKey] = stats[statKey] * 1.5
+                end
+                --Para
+			elseif statKey == "spe" then
+				if data.p.status == "PAR" then
+					stats[statKey] = stats[statKey] * 0.25
+				end
+			end
+
+			data.p[statKey] = math.floor(stats[statKey] + 0.5)
 		end
-		Drawing.drawImageAsPixels(gSymbol, gX, gY, gColors, gShadow)
 	end
+	return data
 end
 
 function TrackerScreen.drawStatsArea(data)
@@ -1129,15 +1145,52 @@ function TrackerScreen.drawStatsArea(data)
 	local statOffsetX = Constants.SCREEN.WIDTH + statBoxWidth + 1
 	local statOffsetY = 7
 
+	data = TrackerScreen.calculateActualStats(data)
+
 	-- Draw the border box for the Stats area
-	local x, y = Constants.SCREEN.WIDTH + statBoxWidth, 5
-	local w, h = Constants.SCREEN.RIGHT_GAP - statBoxWidth - 5, 75
-	gui.drawRectangle(x, y, w, h, borderColor, bgColor)
-	if RouteData.Locations.CanPCHeal[TrackerAPI.getMapId()] then
-		if data.x.extras.upperleft then gui.drawPixel(x + 1, y + 1, borderColor) end
-		if data.x.extras.upperright then gui.drawPixel(x + w - 1, y + 1, borderColor) end
-		if data.x.extras.lowerleft then gui.drawPixel(x + 1, y + h - 1, borderColor) end
-		if data.x.extras.lowerright then gui.drawPixel(x + w - 1, y + h - 1, borderColor) end
+	gui.drawRectangle(Constants.SCREEN.WIDTH + statBoxWidth, 5, Constants.SCREEN.RIGHT_GAP - statBoxWidth - 5, 75,
+		Theme.COLORS["Upper box border"], Theme.COLORS["Upper box background"])
+	local highestStatKeys = {}
+	local lowestStatKeys = {}
+	local intermediateInsteadOfNegative = false
+	if Tracker.Data.isViewingOwn then
+		local highestStat = 0
+		local lowestStat = math.huge
+		local validRange = 0.15
+		local intermediateStatThreshold = 0.5
+		local statKeys = Constants.OrderedLists.STATSTAGES
+		local statValues = {}
+
+		for i = 2, #statKeys do
+			table.insert(statValues, {
+				statKeys[i]:lower(),
+				data.p[statKeys[i]:lower()]
+			})
+		end
+
+		-- Find highest and lowest stats
+		for i = 1, #statValues do
+			local stat = statValues[i][2]
+			highestStat = math.max(highestStat, stat)
+			lowestStat = math.min(lowestStat, stat)
+		end
+		-- Find all stats that are within 10% of the highest and lowest stats, and add them to the list
+		for i = 1, #statValues do
+			local stat = statValues[i][2]
+			local statKey = statValues[i][1]
+
+			if stat >= highestStat * (1 - validRange) then
+				table.insert(highestStatKeys, statKey)
+			end
+
+			if stat <= lowestStat * (1 + validRange) then
+				table.insert(lowestStatKeys, statKey)
+			end
+		end
+		-- If the lowest stat is within a larger percentage of the highest stat, use intermediate instead of lowest
+		if lowestStat >= highestStat * (1 - intermediateStatThreshold) then
+			intermediateInsteadOfNegative = true
+		end
 	end
 
 	-- Draw the six primary stats
@@ -1150,15 +1203,15 @@ function TrackerScreen.drawStatsArea(data)
 		["SPE"] = Resources.TrackerScreen.StatSPE,
 	}
 	for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
-		local textColor = Theme.COLORS["Default text"]
+		local nautreColor = Theme.COLORS["Default text"]
 		local natureSymbol = ""
 
 		if Battle.isViewingOwn then
 			if statKey == data.p.positivestat then
-				textColor = Theme.COLORS["Positive text"]
+				nautreColor = Theme.COLORS["Positive text"]
 				natureSymbol = "+"
 			elseif statKey == data.p.negativestat then
-				textColor = Theme.COLORS["Negative text"]
+				nautreColor = Theme.COLORS["Negative text"]
 				natureSymbol = Constants.BLANKLINE
 			end
 		end
@@ -1169,8 +1222,8 @@ function TrackerScreen.drawStatsArea(data)
 		end
 
 		-- Draw stat label and nature symbol next to it
-		Drawing.drawText(statOffsetX, statOffsetY, statLabels[statKey:upper()], textColor, shadowcolor)
-		Drawing.drawText(statOffsetX + 16 + langOffset, statOffsetY - 1, natureSymbol, textColor, nil, 5, Constants.Font.FAMILY)
+		Drawing.drawText(statOffsetX, statOffsetY, statKey:upper(), nautreColor, shadowcolor)
+		Drawing.drawText(statOffsetX + 16, statOffsetY - 1, natureSymbol, nautreColor, nil, 5, Constants.Font.FAMILY)
 
 		-- Draw stat battle increases/decreases, stages range from -6 to +6
 		if Battle.inActiveBattle() then
@@ -1181,7 +1234,17 @@ function TrackerScreen.drawStatsArea(data)
 		-- Draw stat value, or the stat tracking box if enemy Pokemon
 		if Battle.isViewingOwn then
 			local statValueText = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])
-			Drawing.drawNumber(statOffsetX + 25, statOffsetY, statValueText, 3, textColor, shadowcolor)
+			local statColor = Theme.COLORS["Default text"]
+			if Utils.table_contains(highestStatKeys, statKey:lower()) then
+				statColor = Theme.COLORS["Positive text"]
+			elseif Utils.table_contains(lowestStatKeys, statKey:lower()) then
+				if intermediateInsteadOfNegative then
+					statColor = Theme.COLORS["Intermediate text"]
+				else
+					statColor = Theme.COLORS["Negative text"]
+				end
+			end
+			Drawing.drawNumber(statOffsetX + 25, statOffsetY, statValueText, 3, statColor, shadowcolor)
 		else
 			if Options["Open Book Play Mode"] then
 				local bstSpread = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])
@@ -1257,6 +1320,46 @@ function TrackerScreen.drawMovesArea(data)
 	if not Theme.MOVE_TYPES_ENABLED then -- Check if move type will be drawn as a rectangle
 		moveNameOffset = moveNameOffset + 5
 	end
+	local bestMove = nil
+	if Tracker.Data.isViewingOwn then -- Check if move PP will be drawn
+		-- Determine naiive "best move" for the pokemon, based on move power and user's stats
+
+        local moveRatings = {}
+		local bestMoveRating = 0
+
+		-- Determine factor to multiply each category by, based on the pokemon's atk and spa stats
+		local atkFactor = data.p["atk"] / (data.p["atk"] + data.p["spa"])
+		console.clear()
+
+        for i, move in ipairs(data.m.moves) do
+            move.rating = 0
+			-- Check if it is a string
+            if type(move.power) ~= "string" then
+                if move.category == MoveData.Categories.PHYSICAL then
+                    move.rating = move.power * atkFactor
+                elseif move.category == MoveData.Categories.SPECIAL then
+                    move.rating = move.power * (1 - atkFactor)
+                end
+                if move.accuracy ~= Constants.BLANKLINE then
+                    move.rating = move.rating * (move.accuracy / 100)
+                end
+
+                table.insert(moveRatings, move)
+            end
+            if move.rating > bestMoveRating then
+                bestMove = move.name
+                bestMoveRating = move.rating
+            end
+        end
+
+        -- Normalise the ratings to be between 0 and 1, 1 being the best move and other moves being a fraction of that
+        for i, move in ipairs(moveRatings) do
+			move.rating = math.floor((move.rating / bestMoveRating) * 100) / 100
+			console.log(move.name .. " rating: " .. move.rating)
+		end
+	end
+
+
 
 	-- Draw all four moves
 	for i, move in ipairs(data.m.moves) do

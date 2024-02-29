@@ -369,6 +369,11 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 		else
 			move.effectiveness = 1
 		end
+		if Options["Calculate effective dmg/acc"] then
+			move.accuracy = Utils.calculateEffectiveAccuracy(move, viewedPokemon, opposingPokemon)
+
+			move.power = Utils.calculateEffectiveDamage(move, viewedPokemon, opposingPokemon)
+		end
 	end
 
 	-- MISC DATA (data.x)
@@ -392,7 +397,9 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 
 	return data
 end
-
+---
+---@param pokemonID integer
+---@return table
 function DataHelper.buildPokemonInfoDisplay(pokemonID)
 	local data = {}
 	data.p = {} -- data about the Pokemon itself

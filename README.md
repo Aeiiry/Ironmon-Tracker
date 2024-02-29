@@ -1,3 +1,20 @@
+# Branch information
+
+This is a branch that adds a small icon to the top right of the category icon when viewing a pokemon's information in the log viewer.
+The arrow indicates whether or not the move matches the pokemon's preferred attacking type. An icon will only be shown if the pokemon's better attacking stat is at least 50% higher than their worse one.
+
+Examples:
+
+>*Here special moves are shown with an arrow as venusaur's special attack is higher than their attack * 1.5 ( 66).*
+>
+>![image](https://user-images.githubusercontent.com/19582161/227461796-1f454132-4836-47f9-ab34-909af916d20c.png)
+
+
+>*No indicator is shown here for charmander as its better attacking stat is not different enough*
+>
+>![image](https://user-images.githubusercontent.com/19582161/227462011-10561bbd-06e2-48ab-aba3-29d0cfe18a91.png)
+
+
 # Ironmon-Tracker
 
 ### [General Information](#general-information) | [Supported Games](#supported-games) | [Installation](#installation) | [Latest Changes](#latest-changes) | [Contributing](#contributing)
