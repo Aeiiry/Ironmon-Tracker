@@ -563,18 +563,46 @@ function LogTabPokemonDetails.buildZoomButtons(pokemonID)
 				local bgColor = Theme.COLORS[LogTabPokemonDetails.Colors.boxFill]
 				Drawing.drawTransparentTextbox(x + 1, y, self:getText(), textColor, bgColor, shadowcolor)
 
-				if Options["Show physical special icons"] and MoveData.isValid(self.moveId) then
-					local move = MoveData.Moves[self.moveId]
-					local image
-					if move.category == MoveData.Categories.PHYSICAL then
-						image = Constants.PixelImages.PHYSICAL
-					elseif move.category == MoveData.Categories.SPECIAL then
-						image = Constants.PixelImages.SPECIAL
+                if Options["Show physical special icons"] and MoveData.isValid(self.moveId) then
+                    local move = MoveData.Moves[self.moveId]
+                    local image
+                    if move.category == MoveData.Categories.PHYSICAL then
+                        image = Constants.PixelImages.PHYSICAL
+                    elseif move.category == MoveData.Categories.SPECIAL then
+                        image = Constants.PixelImages.SPECIAL
+                    end
+                    if image then
+                        Drawing.drawImageAsPixels(image, x + moveCategoryOffset, y + 2, { textColor }, shadowcolor)
+                    end
+                end
+				local prefferredCategory = ""
+                    local atkSpaDiff = data.p.atk / data.p.spa
+					if atkSpaDiff > 1.5 then
+						prefferredCategory = "Physical"
+					elseif atkSpaDiff < 0.66 then
+						prefferredCategory = "Special"
 					end
-					if image then
-						Drawing.drawImageAsPixels(image, x + moveCategoryOffset, y + 2, { textColor }, shadowcolor)
+					if prefferredCategory == "Physical" and MoveData.Moves[self.moveId].category == MoveData.Categories.PHYSICAL then
+						Drawing.drawChevron(
+							self.box[1] + moveCategoryOffset + 8,
+							self.box[2] - 1,
+							2,
+							1,
+							1,
+							"up",
+							Theme.COLORS["Positive text"]
+						)
+					elseif prefferredCategory == "Special" and MoveData.Moves[self.moveId].category == MoveData.Categories.SPECIAL then
+						Drawing.drawChevron(
+							self.box[1] + moveCategoryOffset + 8,
+							self.box[2] - 1,
+							2,
+							1,
+							1,
+							"up",
+							Theme.COLORS["Positive text"]
+						)
 					end
-				end
 			end,
 			onClick = function(self)
 				if MoveData.isValid(self.moveId) then
@@ -643,34 +671,7 @@ function LogTabPokemonDetails.buildZoomButtons(pokemonID)
                     if image then
                         Drawing.drawImageAsPixels(image, self.box[1] + moveCategoryOffset, self.box[2] + 2, { Theme.COLORS[self.textColor] }, shadowcolor)
                     end
-					local prefferredCategory = ""
-					local atkSpaDiff = data.p.atk / data.p.spa
-					if atkSpaDiff > 1.5 then
-						prefferredCategory = "Physical"
-					elseif atkSpaDiff < 0.66 then
-						prefferredCategory = "Special"
-					end
-					if prefferredCategory == "Physical" and MoveData.Moves[self.moveId].category == MoveData.Categories.PHYSICAL then
-						Drawing.drawChevron(
-							self.box[1] + moveCategoryOffset + 8,
-							self.box[2] - 1,
-							2,
-							1,
-							1,
-							"up",
-							Theme.COLORS["Positive text"]
-						)
-					elseif prefferredCategory == "Special" and MoveData.Moves[self.moveId].category == MoveData.Categories.SPECIAL then
-						Drawing.drawChevron(
-							self.box[1] + moveCategoryOffset + 8,
-							self.box[2] - 1,
-							2,
-							1,
-							1,
-							"up",
-							Theme.COLORS["Positive text"]
-						)
-					end
+
 				end
 			end,
 			onClick = function(self)
