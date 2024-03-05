@@ -1038,49 +1038,86 @@ function TrackerScreen.drawPokemonInfoArea(data)
 	local infoBoxHeight = 23
 	gui.drawRectangle(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN, Constants.SCREEN.MARGIN + 52, 96, infoBoxHeight, Theme.COLORS["Upper box border"], Theme.COLORS["Upper box background"])
 
-	if Battle.isViewingOwn and data.p.id ~= 0 then
-		local healsInBagText = string.format("%s:", Resources.TrackerScreen.HealsInBag)
-		local healsValueText = string.format("%.0f%% %s (%s)", data.x.healperc, Resources.TrackerScreen.HPAbbreviation, data.x.healnum)
-		Drawing.drawText(Constants.SCREEN.WIDTH + 6, 57, healsInBagText, Theme.COLORS["Default text"], shadowcolor)
-		Drawing.drawText(Constants.SCREEN.WIDTH + 6, 68, healsValueText, Theme.COLORS["Default text"], shadowcolor)
+    if Battle.isViewingOwn and data.p.id ~= 0 then
+        local healsInBagText = string.format("%s:", Resources.TrackerScreen.HealsInBag)
+        local healsValueText = string.format("%.0f%% %s (%s)", data.x.healperc, Resources.TrackerScreen.HPAbbreviation, data.x.healnum)
+        Drawing.drawText(Constants.SCREEN.WIDTH + 6, 57, healsInBagText, Theme.COLORS["Default text"], shadowcolor)
+        Drawing.drawText(Constants.SCREEN.WIDTH + 6, 68, healsValueText, Theme.COLORS["Default text"], shadowcolor)
 
-		if Options["Track PC Heals"] then
-			-- Auto-tracking PC Heals button
-			Drawing.drawButton(TrackerScreen.Buttons.PCHealAutoTracking, shadowcolor)
+        if Options["Track PC Heals"] then
+            -- Auto-tracking PC Heals button
+            Drawing.drawButton(TrackerScreen.Buttons.PCHealAutoTracking, shadowcolor)
 
-			-- Right-align the PC Heals number
-			local healNumberSpacing = (2 - string.len(tostring(data.x.pcheals))) * 5 + 87
-			Drawing.drawText(Constants.SCREEN.WIDTH + healNumberSpacing, 68, data.x.pcheals, Utils.getCenterHealColor(), shadowcolor)
+            -- Right-align the PC Heals number
+            local healNumberSpacing = (2 - string.len(tostring(data.x.pcheals))) * 5 + 87
+            Drawing.drawText(Constants.SCREEN.WIDTH + healNumberSpacing, 68, data.x.pcheals, Utils.getCenterHealColor(), shadowcolor)
 
-			-- Draw the '+' and '-' for incrementing/decrementing heal count
-			local incBtn = TrackerScreen.Buttons.PCHealIncrement
-			local decBtn = TrackerScreen.Buttons.PCHealDecrement
-			if Theme.DRAW_TEXT_SHADOWS then
-				Drawing.drawText(incBtn.box[1] + 1, incBtn.box[2] + 1, incBtn:getText(), shadowcolor, nil, 5, Constants.Font.FAMILY)
-				Drawing.drawText(decBtn.box[1] + 1, decBtn.box[2] + 1, decBtn:getText(), shadowcolor, nil, 5, Constants.Font.FAMILY)
+            -- Draw the '+' and '-' for incrementing/decrementing heal count
+            local incBtn = TrackerScreen.Buttons.PCHealIncrement
+            local decBtn = TrackerScreen.Buttons.PCHealDecrement
+            if Theme.DRAW_TEXT_SHADOWS then
+                Drawing.drawText(incBtn.box[1] + 1, incBtn.box[2] + 1, incBtn:getText(), shadowcolor, nil, 5, Constants.Font.FAMILY)
+                Drawing.drawText(decBtn.box[1] + 1, decBtn.box[2] + 1, decBtn:getText(), shadowcolor, nil, 5, Constants.Font.FAMILY)
+            end
+            Drawing.drawText(incBtn.box[1], incBtn.box[2], incBtn:getText(), Theme.COLORS[incBtn.textColor], nil, 5, Constants.Font.FAMILY)
+            Drawing.drawText(decBtn.box[1], decBtn.box[2], decBtn:getText(), Theme.COLORS[decBtn.textColor], nil, 5, Constants.Font.FAMILY)
+        else
+            Drawing.drawButton(TrackerScreen.Buttons.LogViewerQuickAccess, shadowcolor)
+        end
+    elseif Battle.inActiveBattle() then
+        local encounterText, routeText, routeInfoX
+        if Battle.isWildEncounter then
+            encounterText = string.format("%s: %s", Resources.TrackerScreen.BattleSeenInTheWild, data.x.encounters)
+            routeText = data.x.route
+            routeInfoX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11
+            Drawing.drawButton(TrackerScreen.Buttons.RouteDetails, shadowcolor)
+        else
+            encounterText = string.format("%s: %s", Resources.TrackerScreen.BattleSeenOnTrainers, data.x.encounters)
+            routeText = string.format("%s:", Resources.TrackerScreen.BattleTeam)
+            routeInfoX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN
+            Drawing.drawTrainerTeamPokeballs(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 40, Constants.SCREEN.MARGIN + 65, shadowcolor)
+        end
+
+        Drawing.drawText(routeInfoX, Constants.SCREEN.MARGIN + 53, encounterText, Theme.COLORS["Default text"], shadowcolor)
+        Drawing.drawText(routeInfoX, Constants.SCREEN.MARGIN + 63, routeText, Theme.COLORS["Default text"], shadowcolor)
+    end
+
+	-- POKEMON ICON (draw last to overlap anything else, if necessary)
+	SpriteData.checkForFaintingStatus(data.p.id, data.p.curHP <= 0)
+	SpriteData.checkForSleepingStatus(data.p.id, data.p.status)
+	Drawing.drawButton(TrackerScreen.Buttons.PokemonIcon, shadowcolor)
+	Drawing.drawButton(TrackerScreen.Buttons.ShinyEffect, shadowcolor)
+
+	-- STATUS ICON
+	if data.p.status ~= MiscData.StatusCodeMap[MiscData.StatusType.None] then
+		Drawing.drawStatusIcon(data.p.status, Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 30 - 16 + 1, Constants.SCREEN.MARGIN + 1)
+	end
+
+	-- GENDER ICON
+	if Options["Display gender"] and PokemonData.isValid(data.p.id) and data.p.gender ~= MiscData.Gender.UNKNOWN then
+		local gSymbol
+		if data.p.gender == MiscData.Gender.MALE then
+			gSymbol = Constants.PixelImages.MALE_SYMBOL
+		else
+			gSymbol = Constants.PixelImages.FEMALE_SYMBOL
+		end
+		local nameWidth = Utils.calcWordPixelLength(data.p.name)
+		local gX, gY, gShadow
+		local gColors = { Theme.COLORS["Default text"] }
+		-- Check if there's room to draw the symbol next to the name, otherwise overlay on the Pokemon icon
+		if nameWidth < 45 then
+			gX = Constants.SCREEN.WIDTH + 36 + nameWidth + 4
+			gY = Constants.SCREEN.MARGIN + 2
+			gShadow = shadowcolor
+		else
+			gX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 23
+			gY = Constants.SCREEN.MARGIN + 20
+			if gSymbol == Constants.PixelImages.FEMALE_SYMBOL then
+				gX = gX + 3
 			end
-			Drawing.drawText(incBtn.box[1], incBtn.box[2], incBtn:getText(), Theme.COLORS[incBtn.textColor], nil, 5, Constants.Font.FAMILY)
-			Drawing.drawText(decBtn.box[1], decBtn.box[2], decBtn:getText(), Theme.COLORS[decBtn.textColor], nil, 5, Constants.Font.FAMILY)
-		else
-			Drawing.drawButton(TrackerScreen.Buttons.LogViewerQuickAccess, shadowcolor)
+			table.insert(gColors, Theme.COLORS["Upper box background"] - 0x40000000) -- semi-transparent
 		end
-	elseif Battle.inActiveBattle() then
-		local encounterText, routeText, routeInfoX
-		if Battle.isWildEncounter then
-			encounterText = string.format("%s: %s", Resources.TrackerScreen.BattleSeenInTheWild, data.x.encounters)
-			routeText = data.x.route
-			routeInfoX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11
-			Drawing.drawButton(TrackerScreen.Buttons.RouteDetails, shadowcolor)
-		else
-			encounterText = string.format("%s: %s", Resources.TrackerScreen.BattleSeenOnTrainers, data.x.encounters)
-			routeText = string.format("%s:", Resources.TrackerScreen.BattleTeam)
-			routeInfoX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN
-			Drawing.drawTrainerTeamPokeballs(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 40, Constants.SCREEN.MARGIN + 65, shadowcolor)
-		end
-
-		Drawing.drawButton(TrackerScreen.Buttons.RouteDetails, shadowcolor)
-		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11, Constants.SCREEN.MARGIN + 53, encounterText, Theme.COLORS["Default text"], shadowcolor)
-		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 11, Constants.SCREEN.MARGIN + 63, routeText, Theme.COLORS["Default text"], shadowcolor)
+		Drawing.drawImageAsPixels(gSymbol, gX, gY, gColors, gShadow)
 	end
 end
 --- Calculates the actual stats of the Pokemon being tracked. Including stat stages, huge power, plus/minus, guts, hustle, choice band, burn, paralyze etc.
@@ -1148,49 +1185,14 @@ function TrackerScreen.drawStatsArea(data)
 	data = TrackerScreen.calculateActualStats(data)
 
 	-- Draw the border box for the Stats area
-	gui.drawRectangle(Constants.SCREEN.WIDTH + statBoxWidth, 5, Constants.SCREEN.RIGHT_GAP - statBoxWidth - 5, 75,
-		Theme.COLORS["Upper box border"], Theme.COLORS["Upper box background"])
-	local highestStatKeys = {}
-	local lowestStatKeys = {}
-	local intermediateInsteadOfNegative = false
-	if Tracker.Data.isViewingOwn then
-		local highestStat = 0
-		local lowestStat = math.huge
-		local validRange = 0.15
-		local intermediateStatThreshold = 0.5
-		local statKeys = Constants.OrderedLists.STATSTAGES
-		local statValues = {}
-
-		for i = 2, #statKeys do
-			table.insert(statValues, {
-				statKeys[i]:lower(),
-				data.p[statKeys[i]:lower()]
-			})
-		end
-
-		-- Find highest and lowest stats
-		for i = 1, #statValues do
-			local stat = statValues[i][2]
-			highestStat = math.max(highestStat, stat)
-			lowestStat = math.min(lowestStat, stat)
-		end
-		-- Find all stats that are within 10% of the highest and lowest stats, and add them to the list
-		for i = 1, #statValues do
-			local stat = statValues[i][2]
-			local statKey = statValues[i][1]
-
-			if stat >= highestStat * (1 - validRange) then
-				table.insert(highestStatKeys, statKey)
-			end
-
-			if stat <= lowestStat * (1 + validRange) then
-				table.insert(lowestStatKeys, statKey)
-			end
-		end
-		-- If the lowest stat is within a larger percentage of the highest stat, use intermediate instead of lowest
-		if lowestStat >= highestStat * (1 - intermediateStatThreshold) then
-			intermediateInsteadOfNegative = true
-		end
+	local x, y = Constants.SCREEN.WIDTH + statBoxWidth, 5
+	local w, h = Constants.SCREEN.RIGHT_GAP - statBoxWidth - 5, 75
+	gui.drawRectangle(x, y, w, h, borderColor, bgColor)
+	if RouteData.Locations.CanPCHeal[TrackerAPI.getMapId()] then
+		if data.x.extras.upperleft then gui.drawPixel(x + 1, y + 1, borderColor) end
+		if data.x.extras.upperright then gui.drawPixel(x + w - 1, y + 1, borderColor) end
+		if data.x.extras.lowerleft then gui.drawPixel(x + 1, y + h - 1, borderColor) end
+		if data.x.extras.lowerright then gui.drawPixel(x + w - 1, y + h - 1, borderColor) end
 	end
 
 	-- Draw the six primary stats
@@ -1203,15 +1205,15 @@ function TrackerScreen.drawStatsArea(data)
 		["SPE"] = Resources.TrackerScreen.StatSPE,
 	}
 	for _, statKey in ipairs(Constants.OrderedLists.STATSTAGES) do
-		local nautreColor = Theme.COLORS["Default text"]
+		local textColor = Theme.COLORS["Default text"]
 		local natureSymbol = ""
 
 		if Battle.isViewingOwn then
 			if statKey == data.p.positivestat then
-				nautreColor = Theme.COLORS["Positive text"]
+				textColor = Theme.COLORS["Positive text"]
 				natureSymbol = "+"
 			elseif statKey == data.p.negativestat then
-				nautreColor = Theme.COLORS["Negative text"]
+				textColor = Theme.COLORS["Negative text"]
 				natureSymbol = Constants.BLANKLINE
 			end
 		end
@@ -1222,8 +1224,8 @@ function TrackerScreen.drawStatsArea(data)
 		end
 
 		-- Draw stat label and nature symbol next to it
-		Drawing.drawText(statOffsetX, statOffsetY, statKey:upper(), nautreColor, shadowcolor)
-		Drawing.drawText(statOffsetX + 16, statOffsetY - 1, natureSymbol, nautreColor, nil, 5, Constants.Font.FAMILY)
+		Drawing.drawText(statOffsetX, statOffsetY, statLabels[statKey:upper()], textColor, shadowcolor)
+		Drawing.drawText(statOffsetX + 16 + langOffset, statOffsetY - 1, natureSymbol, textColor, nil, 5, Constants.Font.FAMILY)
 
 		-- Draw stat battle increases/decreases, stages range from -6 to +6
 		if Battle.inActiveBattle() then
@@ -1233,18 +1235,59 @@ function TrackerScreen.drawStatsArea(data)
 
 		-- Draw stat value, or the stat tracking box if enemy Pokemon
 		if Battle.isViewingOwn then
-			local statValueText = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])
-			local statColor = Theme.COLORS["Default text"]
-			if Utils.table_contains(highestStatKeys, statKey:lower()) then
-				statColor = Theme.COLORS["Positive text"]
-			elseif Utils.table_contains(lowestStatKeys, statKey:lower()) then
-				if intermediateInsteadOfNegative then
-					statColor = Theme.COLORS["Intermediate text"]
-				else
-					statColor = Theme.COLORS["Negative text"]
+			local highestStatKeys = {}
+			local lowestStatKeys = {}
+			local intermediateInsteadOfNegative = false
+			local highestStat = 0
+			local lowestStat = math.huge
+			local validRange = 0.15
+			local intermediateStatThreshold = 0.5
+			local statKeys = Constants.OrderedLists.STATSTAGES
+			local statValues = {}
+
+			for i = 2, #statKeys do
+				table.insert(statValues, {
+					statKeys[i]:lower(),
+					data.p[statKeys[i]:lower()]
+				})
+			end
+
+			-- Find highest and lowest stats
+			for i = 1, #statValues do
+				local stat = statValues[i][2]
+				highestStat = math.max(highestStat, stat)
+				lowestStat = math.min(lowestStat, stat)
+			end
+			-- Find all stats that are within 10% of the highest and lowest stats, and add them to the list
+			for i = 1, #statValues do
+				local stat = statValues[i][2]
+				local statKey = statValues[i][1]
+
+				if stat >= highestStat * (1 - validRange) then
+					table.insert(highestStatKeys, statKey)
+				end
+
+				if stat <= lowestStat * (1 + validRange) then
+					table.insert(lowestStatKeys, statKey)
 				end
 			end
-			Drawing.drawNumber(statOffsetX + 25, statOffsetY, statValueText, 3, statColor, shadowcolor)
+			-- If the lowest stat is within a larger percentage of the highest stat, use intermediate instead of lowest
+			if lowestStat >= highestStat * (1 - intermediateStatThreshold) then
+				intermediateInsteadOfNegative = true
+			end
+			local statValueText = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])
+
+			local textColor = Theme.COLORS["Default text"]
+			if Utils.table_contains(highestStatKeys, statKey:lower()) then
+				textColor = Theme.COLORS["Positive text"]
+			elseif Utils.table_contains(lowestStatKeys, statKey:lower()) then
+				if intermediateInsteadOfNegative then
+					textColor = Theme.COLORS["Intermediate text"]
+				else
+					textColor = Theme.COLORS["Negative text"]
+				end
+			end
+			Drawing.drawNumber(statOffsetX + 25, statOffsetY, statValueText, 3, textColor, shadowcolor)
 		else
 			if Options["Open Book Play Mode"] then
 				local bstSpread = Utils.inlineIf(data.p[statKey] == 0, Constants.BLANKLINE, data.p[statKey])
@@ -1320,10 +1363,6 @@ function TrackerScreen.drawMovesArea(data)
 	if not Theme.MOVE_TYPES_ENABLED then -- Check if move type will be drawn as a rectangle
 		moveNameOffset = moveNameOffset + 5
 	end
-
-	
-
-
 
 	-- Draw all four moves
 	for i, move in ipairs(data.m.moves) do
