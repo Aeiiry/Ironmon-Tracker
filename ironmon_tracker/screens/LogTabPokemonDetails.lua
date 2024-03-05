@@ -211,7 +211,7 @@ function LogTabPokemonDetails.buildZoomButtons(pokemonID)
 					LogOverlay.Windower:changeTab(LogTabPokemonDetails, 1, 1, self.pokemonID)
 					InfoScreen.changeScreenView(InfoScreen.Screens.POKEMON_INFO, self.pokemonID)
 				end
-			end,
+            end,
 			draw = function(self, shadowcolor)
 				local evoTextSize = Utils.calcWordPixelLength(self:getText() or "")
 				-- Center text
@@ -220,7 +220,7 @@ function LogTabPokemonDetails.buildZoomButtons(pokemonID)
 				local textY = self.box[2] + self.box[4] + 2
 				local textColor = Theme.COLORS[self.textColor]
 				local bgColor = Theme.COLORS[LogTabPokemonDetails.Colors.boxFill]
-				Drawing.drawTransparentTextbox(textX, textY, self:getText(), textColor, bgColor, shadowcolor)
+                Drawing.drawTransparentTextbox(textX, textY, self:getText(), textColor, bgColor, shadowcolor)
 			end
 		}
 		table.insert(LogTabPokemonDetails.TemporaryButtons, preEvoButton)
@@ -640,8 +640,36 @@ function LogTabPokemonDetails.buildZoomButtons(pokemonID)
 					elseif move.category == MoveData.Categories.SPECIAL then
 						image = Constants.PixelImages.SPECIAL
 					end
-					if image then
-						Drawing.drawImageAsPixels(image, self.box[1] + moveCategoryOffset, self.box[2] + 2, { Theme.COLORS[self.textColor] }, shadowcolor)
+                    if image then
+                        Drawing.drawImageAsPixels(image, self.box[1] + moveCategoryOffset, self.box[2] + 2, { Theme.COLORS[self.textColor] }, shadowcolor)
+                    end
+					local prefferredCategory = ""
+					local atkSpaDiff = data.p.atk / data.p.spa
+					if atkSpaDiff > 1.5 then
+						prefferredCategory = "Physical"
+					elseif atkSpaDiff < 0.66 then
+						prefferredCategory = "Special"
+					end
+					if prefferredCategory == "Physical" and MoveData.Moves[self.moveId].category == MoveData.Categories.PHYSICAL then
+						Drawing.drawChevron(
+							self.box[1] + moveCategoryOffset + 8,
+							self.box[2] - 1,
+							2,
+							1,
+							1,
+							"up",
+							Theme.COLORS["Positive text"]
+						)
+					elseif prefferredCategory == "Special" and MoveData.Moves[self.moveId].category == MoveData.Categories.SPECIAL then
+						Drawing.drawChevron(
+							self.box[1] + moveCategoryOffset + 8,
+							self.box[2] - 1,
+							2,
+							1,
+							1,
+							"up",
+							Theme.COLORS["Positive text"]
+						)
 					end
 				end
 			end,
