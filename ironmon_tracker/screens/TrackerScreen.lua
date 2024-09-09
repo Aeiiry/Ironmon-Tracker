@@ -18,6 +18,8 @@ TrackerScreen.Buttons = {
 			end
 			if Options["Open Book Play Mode"] then
 				LogOverlay.Windower:changeTab(LogTabPokemon)
+				LogSearchScreen.resetSearchSortFilter()
+				LogOverlay.refreshActiveTabGrid()
 				LogOverlay.Windower:changeTab(LogTabPokemonDetails, 1, 1, pokemon.pokemonID)
 			end
 			InfoScreen.changeScreenView(InfoScreen.Screens.POKEMON_INFO, pokemon.pokemonID)
@@ -29,12 +31,23 @@ TrackerScreen.Buttons = {
 		iconColors = { "Intermediate text" },
 		isHighlighted = true,
 		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 84, Constants.SCREEN.MARGIN + 10, 12, 12 },
-		isVisible = function(self) return (Tracker.getViewedPokemon() or {}).isShiny end,
+		isVisible = function(self)
+			local pokemon = Tracker.getViewedPokemon() or {}
+			return pokemon.isShiny or (pokemon.hasPokerus and Battle.isViewingOwn)
+		end,
 		updateSelf = function(self)
+			local pokemon = Tracker.getViewedPokemon() or {}
+			if pokemon.isShiny and self.image ~= Constants.PixelImages.SPARKLES then
+				self.image = Constants.PixelImages.SPARKLES
+			elseif pokemon.hasPokerus and self.image ~= Constants.PixelImages.VIRUS then
+				self.image = Constants.PixelImages.VIRUS
+			end
 			self.iconColors[1] = self.isHighlighted and "Intermediate text" or "Default text"
 		end,
 		onClick = function(self)
-			self:activatePulsing()
+			if self.image == Constants.PixelImages.SPARKLES then
+				self:activatePulsing()
+			end
 		end,
 		pulse = function(self)
 			self.isHighlighted = not self.isHighlighted
@@ -138,7 +151,16 @@ TrackerScreen.Buttons = {
 		box = { Constants.SCREEN.WIDTH + 84, 64, 10, 10 },
 		isVisible = function() return Battle.isViewingOwn and Options["Open Book Play Mode"] and not Options["Track PC Heals"] end,
 		onClick = function(self)
-			TrackerScreen.Buttons.PokemonIcon:onClick()
+			-- Default to pulling up the Routes info screen
+			LogOverlay.Windower:changeTab(LogTabRoutes)
+			LogSearchScreen.resetSearchSortFilter()
+			LogOverlay.refreshActiveTabGrid()
+			-- If a route is available, show that one specifically
+			local mapId = TrackerAPI.getMapId()
+			if RouteData.hasAnyEncounters(mapId) then
+				LogOverlay.Windower:changeTab(LogTabRouteDetails, 1, 1, mapId)
+			end
+			Program.redraw(true)
 		end
 	},
 	InvisibleStatsArea = {
@@ -163,8 +185,9 @@ TrackerScreen.Buttons = {
 		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 3, 63, 8, 12 },
 		isVisible = function() return not Battle.isViewingOwn end,
 		onClick = function(self)
-			if not RouteData.hasRouteEncounterArea(Program.GameData.mapId, Battle.CurrentRoute.encounterArea) then return end
-
+			if not RouteData.hasRouteEncounterArea(Program.GameData.mapId, Battle.CurrentRoute.encounterArea) then
+				return
+			end
 			local routeInfo = {
 				mapId = Program.GameData.mapId,
 				encounterArea = Battle.CurrentRoute.encounterArea,
@@ -180,15 +203,21 @@ TrackerScreen.Buttons = {
 		box = { Constants.SCREEN.WIDTH + 88, 43, 11, 11 },
 		isVisible = function() return not Battle.isViewingOwn end,
 		onClick = function(self)
-			local pokemon = Tracker.getViewedPokemon()
-			if pokemon ~= nil and PokemonData.isValid(pokemon.pokemonID) then
-				if Options["Open Book Play Mode"] then
-					local abilityId = PokemonData.getAbilityId(pokemon.pokemonID, 0) -- 0 is the first ability
-					InfoScreen.changeScreenView(InfoScreen.Screens.ABILITY_INFO, abilityId)
-				else
-					local trackedAbilities = Tracker.getAbilities(pokemon.pokemonID)
-					InfoScreen.changeScreenView(InfoScreen.Screens.ABILITY_INFO, trackedAbilities[1].id)
-				end
+			local pokemon = Tracker.getViewedPokemon() or {}
+			if not PokemonData.isValid(pokemon.pokemonID) then
+				return
+			end
+			local abilityId
+			if Options["Open Book Play Mode"] then
+				abilityId = PokemonData.getAbilityId(pokemon.pokemonID, 0) -- 0 is the first ability
+			else
+				local trackedAbilities = Tracker.getAbilities(pokemon.pokemonID) or {}
+				abilityId = trackedAbilities[1].id or 0
+			end
+			if AbilityData.isValid(abilityId) then
+				InfoScreen.changeScreenView(InfoScreen.Screens.ABILITY_INFO, abilityId)
+			else
+				TrackerScreen.openNotePadWindow(pokemon.pokemonID)
 			end
 		end
 	},
@@ -200,18 +229,23 @@ TrackerScreen.Buttons = {
 		box = { Constants.SCREEN.WIDTH + 88, 43, 11, 11 },
 		isVisible = function() return true end,
 		onClick = function(self)
-			local pokemon = Tracker.getViewedPokemon()
-			if pokemon ~= nil and PokemonData.isValid(pokemon.pokemonID) then
-				local abilityId
-				if Battle.isViewingOwn then
-					abilityId = PokemonData.getAbilityId(pokemon.pokemonID, pokemon.abilityNum)
-				elseif Options["Open Book Play Mode"] then
-					abilityId = PokemonData.getAbilityId(pokemon.pokemonID, 1) -- 1 is the second ability
-				else
-					local trackedAbilities = Tracker.getAbilities(pokemon.pokemonID)
-					abilityId = trackedAbilities[2].id
-				end
+			local pokemon = Tracker.getViewedPokemon() or {}
+			if not PokemonData.isValid(pokemon.pokemonID) then
+				return
+			end
+			local abilityId
+			if Battle.isViewingOwn then
+				abilityId = PokemonData.getAbilityId(pokemon.pokemonID, pokemon.abilityNum)
+			elseif Options["Open Book Play Mode"] then
+				abilityId = PokemonData.getAbilityId(pokemon.pokemonID, 1) -- 1 is the second ability
+			else
+				local trackedAbilities = Tracker.getAbilities(pokemon.pokemonID)
+				abilityId = trackedAbilities[2].id
+			end
+			if AbilityData.isValid(abilityId) then
 				InfoScreen.changeScreenView(InfoScreen.Screens.ABILITY_INFO, abilityId)
+			else
+				TrackerScreen.openNotePadWindow(pokemon.pokemonID)
 			end
 		end
 	},
@@ -233,12 +267,16 @@ TrackerScreen.Buttons = {
 		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 69, 81, 10, 10 },
 		boxColors = { "Header text", "Main background" },
 		isVisible = function()
-			local viewedPokemon = Tracker.getViewedPokemon()
-			return viewedPokemon ~= nil and PokemonData.isValid(viewedPokemon.pokemonID)
+			local pokemon = Tracker.getViewedPokemon() or {}
+			return PokemonData.isValid(pokemon.pokemonID)
 		end,
 		onClick = function(self)
-			local viewedPokemon = Tracker.getViewedPokemon()
-			if viewedPokemon ~= nil and MoveHistoryScreen.buildOutHistory(viewedPokemon.pokemonID, viewedPokemon.level) then
+			local pokemon = Tracker.getViewedPokemon() or {}
+			if not PokemonData.isValid(pokemon.pokemonID) then
+				return
+			end
+			local hasMoves = MoveHistoryScreen.buildOutHistory(pokemon.pokemonID, pokemon.level)
+			if hasMoves then
 				Program.changeScreenView(MoveHistoryScreen)
 			end
 		end
@@ -250,12 +288,13 @@ TrackerScreen.Buttons = {
 		textColor = "Lower box text",
 		clickableArea = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 1, 140, 138, 12 },
 		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 4, 140, 11, 11 },
-		isVisible = function() return TrackerScreen.carouselIndex == TrackerScreen.CarouselTypes.NOTES end,
+		isVisible = function() return TrackerScreen.carouselIndex == TrackerScreen.CarouselTypes.NOTES and not Battle.isViewingOwn end,
 		onClick = function(self)
-			local pokemon = Tracker.getViewedPokemon()
-			if pokemon ~= nil and PokemonData.isValid(pokemon.pokemonID) then
-				TrackerScreen.openNotePadWindow(pokemon.pokemonID)
+			local pokemon = Tracker.getViewedPokemon() or {}
+			if not PokemonData.isValid(pokemon.pokemonID) then
+				return
 			end
+			TrackerScreen.openNotePadWindow(pokemon.pokemonID)
 		end
 	},
 	LastAttackSummary = {
@@ -775,68 +814,61 @@ end
 function TrackerScreen.openNotePadWindow(pokemonId)
 	if not PokemonData.isValid(pokemonId) then return end
 
+	local BLANK = Constants.BLANKLINE
 	local pokemonName = PokemonData.Pokemon[pokemonId].name
-	local form = Utils.createBizhawkForm(string.format("%s (%s)", Resources.TrackerScreen.LeaveANote, pokemonName), 465, 220)
+	local form = ExternalUI.BizForms.createForm(string.format("%s (%s)", Resources.TrackerScreen.LeaveANote, pokemonName), 465, 220)
 
-	forms.label(form, string.format("%s %s:", Resources.TrackerScreen.PromptNoteDesc, pokemonName), 9, 10, 300, 20)
-	local noteTextBox = forms.textbox(form, Tracker.getNote(pokemonId), 430, 20, nil, 10, 30)
+	form:createLabel(string.format("%s %s:", Resources.TrackerScreen.PromptNoteDesc, pokemonName), 9, 10)
+	local noteTextBox = form:createTextBox(Tracker.getNote(pokemonId), 10, 30, 430, 20)
+	form:createLabel(string.format("%s %s:", Resources.TrackerScreen.PromptNoteAbilityDesc, pokemonName), 9, 60)
 
 	local abilityList = {}
-	table.insert(abilityList, Constants.BLANKLINE)
+	table.insert(abilityList, BLANK)
 	abilityList = AbilityData.populateAbilityDropdown(abilityList)
 
-	forms.label(form, string.format("%s %s:", Resources.TrackerScreen.PromptNoteAbilityDesc, pokemonName), 9, 60, 220, 20)
-	local abilityOneDropdown = forms.dropdown(form, {["Init"]="Loading Ability1"}, 10, 80, 145, 30)
-	forms.setdropdownitems(abilityOneDropdown, abilityList, true) -- true = alphabetize list
-	forms.setproperty(abilityOneDropdown, "AutoCompleteSource", "ListItems")
-	forms.setproperty(abilityOneDropdown, "AutoCompleteMode", "Append")
-	local abilityTwoDropdown = forms.dropdown(form, {["Init"]="Loading Ability2"}, 10, 110, 145, 30)
-	forms.setdropdownitems(abilityTwoDropdown, abilityList, true) -- true = alphabetize list
-	forms.setproperty(abilityTwoDropdown, "AutoCompleteSource", "ListItems")
-	forms.setproperty(abilityTwoDropdown, "AutoCompleteMode", "Append")
-
 	local trackedAbilities = Tracker.getAbilities(pokemonId)
-	local trackedAbility1 = trackedAbilities[1].id
-	local trackedAbility2 = trackedAbilities[2].id
-
-	if AbilityData.isValid(trackedAbility1) then
-		forms.settext(abilityOneDropdown, AbilityData.Abilities[trackedAbility1].name)
+	local trackedAbility1 = BLANK
+	local trackedAbility2 = BLANK
+	if AbilityData.isValid(trackedAbilities[1].id) then
+		trackedAbility1 = AbilityData.Abilities[trackedAbilities[1].id].name
 	end
-	if AbilityData.isValid(trackedAbility2) then
-		forms.settext(abilityTwoDropdown, AbilityData.Abilities[trackedAbility2].name)
+	if AbilityData.isValid(trackedAbilities[2].id) then
+		trackedAbility2 = AbilityData.Abilities[trackedAbilities[2].id].name
 	end
+	local abilityOneDropdown = form:createDropdown(abilityList, 10, 80, 145, 30, trackedAbility1)
+	local abilityTwoDropdown = form:createDropdown(abilityList, 10, 110, 145, 30, trackedAbility2)
 
 	local saveAndClose = string.format("%s && %s", Resources.AllScreens.Save, Resources.AllScreens.Close)
-	forms.button(form, saveAndClose, function()
-		local formInput = forms.gettext(noteTextBox)
+	form:createButton(saveAndClose, 80, 145, function()
+		local formInput = ExternalUI.BizForms.getText(noteTextBox)
 		if formInput ~= nil then
-			local abilityOneText = forms.gettext(abilityOneDropdown)
-			local abilityTwoText = forms.gettext(abilityTwoDropdown)
+			local abilityOneText = ExternalUI.BizForms.getText(abilityOneDropdown)
+			local abilityTwoText = ExternalUI.BizForms.getText(abilityTwoDropdown)
 			Tracker.TrackNote(pokemonId, formInput)
 			Tracker.setAbilities(pokemonId, abilityOneText, abilityTwoText)
 			Program.redraw(true)
 		end
-		Utils.closeBizhawkForm(form)
-	end, 80, 145, 105, 25)
-	forms.button(form, Resources.TrackerScreen.PromptNoteClearAbilities, function()
-		forms.settext(abilityOneDropdown, Constants.BLANKLINE)
-		forms.settext(abilityTwoDropdown, Constants.BLANKLINE)
-	end, 195, 145, 105, 25)
-	forms.button(form, Resources.AllScreens.Cancel, function()
-		Utils.closeBizhawkForm(form)
-	end, 310, 145, 55, 25)
+		form:destroy()
+	end)
+	form:createButton(Resources.TrackerScreen.PromptNoteClearAbilities, 195, 145, function()
+		ExternalUI.BizForms.setText(abilityOneDropdown, BLANK)
+		ExternalUI.BizForms.setText(abilityTwoDropdown, BLANK)
+	end)
+	form:createButton(Resources.AllScreens.Cancel, 310, 145, function()
+		form:destroy()
+	end)
 end
 
 function TrackerScreen.openEditStepGoalWindow()
-	local form = Utils.createBizhawkForm(Resources.TrackerScreen.PromptStepsTitle, 350, 170)
+	local form = ExternalUI.BizForms.createForm(Resources.TrackerScreen.PromptStepsTitle, 350, 170)
+	local currentSteps = tostring(Program.Pedometer.goalSteps or 0)
 
-	forms.label(form, Resources.TrackerScreen.PromptStepsDesc1, 36, 10, 300, 20)
-	forms.label(form, string.format("[%s]", Resources.TrackerScreen.PromptStepsDesc2), 110, 28, 300, 20)
-	forms.label(form, Resources.TrackerScreen.PromptStepsEnterGoal, 58, 50, 300, 20)
-	local textBox = forms.textbox(form, (Program.Pedometer.goalSteps or 0), 200, 30, "UNSIGNED", 60, 70)
-
-	forms.button(form, Resources.AllScreens.Save, function()
-		local formInput = forms.gettext(textBox)
+	form:createLabel(Resources.TrackerScreen.PromptStepsDesc1, 36, 10)
+	form:createLabel(string.format("[%s]", Resources.TrackerScreen.PromptStepsDesc2), 110, 28)
+	form:createLabel(Resources.TrackerScreen.PromptStepsEnterGoal, 58, 50)
+	local textBox = form:createTextBox(currentSteps, 60, 70, 200, 30, "UNSIGNED", false, true)
+	form:createButton(Resources.AllScreens.Save, 82, 100, function()
+		local formInput = ExternalUI.BizForms.getText(textBox)
 		if not Utils.isNilOrEmpty(formInput) then
 			local newStepGoal = tonumber(formInput)
 			if newStepGoal ~= nil then
@@ -844,11 +876,11 @@ function TrackerScreen.openEditStepGoalWindow()
 				Program.redraw(true)
 			end
 		end
-		Utils.closeBizhawkForm(form)
-	end, 82, 100)
-	forms.button(form, Resources.AllScreens.Cancel, function()
-		Utils.closeBizhawkForm(form)
-	end, 167, 100)
+		form:destroy()
+	end)
+	form:createButton(Resources.AllScreens.Cancel, 167, 100, function()
+		form:destroy()
+	end)
 end
 
 function TrackerScreen.randomlyChooseBall()
@@ -1086,7 +1118,12 @@ function TrackerScreen.drawPokemonInfoArea(data)
 	SpriteData.checkForFaintingStatus(data.p.id, data.p.curHP <= 0)
 	SpriteData.checkForSleepingStatus(data.p.id, data.p.status)
 	Drawing.drawButton(TrackerScreen.Buttons.PokemonIcon, shadowcolor)
-	Drawing.drawButton(TrackerScreen.Buttons.ShinyEffect, shadowcolor)
+
+	-- Temporary process to refresh the icon before it's first drawn
+	if TrackerScreen.Buttons.ShinyEffect:isVisible() then
+		TrackerScreen.Buttons.ShinyEffect:updateSelf()
+		Drawing.drawButton(TrackerScreen.Buttons.ShinyEffect, shadowcolor)
+	end
 
 	-- STATUS ICON
 	if data.p.status ~= MiscData.StatusCodeMap[MiscData.StatusType.None] then
@@ -1344,7 +1381,8 @@ function TrackerScreen.drawMovesArea(data)
 
 	-- Inidicate there are more moves being tracked than can fit on screen
 	if not Battle.isViewingOwn and #Tracker.getMoves(data.p.id) > 4 then
-		Drawing.drawText(Constants.SCREEN.WIDTH + 30, headerY, "*", Theme.COLORS[Theme.headerHighlightKey], bgHeaderShadow)
+		local movesAsterisk = 1 + Utils.calcWordPixelLength(Resources.TrackerScreen.HeaderMoves)
+		Drawing.drawText(Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + movesAsterisk, headerY, "*", Theme.COLORS[Theme.headerHighlightKey], bgHeaderShadow)
 	end
 
 	-- Redraw next move level in the header with a different color if close to learning new move
@@ -1369,9 +1407,9 @@ function TrackerScreen.drawMovesArea(data)
 		local moveTypeColor = Utils.inlineIf(move.name == MoveData.BlankMove.name, Theme.COLORS["Lower box text"], Constants.MoveTypeColors[move.type])
 		local movePowerColor = Theme.COLORS["Lower box text"]
 
-		if move.id == 237 and Battle.isViewingOwn then -- 237 = Hidden Power
+		if move.id == MoveData.Values.HiddenPowerId and Battle.isViewingOwn then
 			moveTypeColor = Utils.inlineIf(move.type == PokemonData.Types.UNKNOWN, Theme.COLORS["Lower box text"], Constants.MoveTypeColors[move.type])
-		elseif move.id == 67 and Options["Calculate variable damage"] then -- 67 = Weather Ball
+		elseif move.id == MoveData.Values.WeatherBallId and Options["Calculate variable damage"] then
 			moveTypeColor = Constants.MoveTypeColors[move.type]
 		end
 
@@ -1495,8 +1533,11 @@ function TrackerScreen.drawBallPicker()
 		else
 			topText = string.format("%s:", Resources.TrackerScreen.RandomBallUserChosen)
 		end
-		if direction == "Random" then
-			botText = botText .. string.format(" (%s)", Utils.firstToUpper(direction))
+
+		local event = EventHandler.Events["CR_PickBallOnce"] or {}
+		local wordForRandom = tostring(event["O_WordForRandom"] or "Random")
+		if Utils.containsText(direction, wordForRandom, true) then
+			botText = botText .. string.format(" (%s)", Resources.TrackerScreen.RandomBallRandom)
 		end
 		botColor = Theme.COLORS["Positive text"]
 	else

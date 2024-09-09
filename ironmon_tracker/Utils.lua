@@ -107,6 +107,19 @@ function Utils.split(s, delimiter, trimWhitespace)
 	return result
 end
 
+---Replaces text in a string with some other text; can choose to match only whole words
+---@param source string The text to search through
+---@param find string The text to find within the `source`
+---@param replace string Used to replace the `find` text within the `source`
+---@param onlyWholeWords boolean? Optional, if true will only match wholewords for `find`
+---@return string
+function Utils.replaceText(source, find, replace, onlyWholeWords)
+	if onlyWholeWords then
+		find = '%f[%a]'..find..'%f[%A]'
+	end
+	return (source:gsub(find,replace))
+end
+
 -- Format "START" as "Start", and "a" as "A"
 function Utils.formatControls(gbaButtons)
 	local controlCombination = ""
@@ -354,43 +367,15 @@ function Utils.getClosestWord(word, wordlist, threshold)
 	end
 end
 
--- Creates a popup Bizhawk form at optional relative location (x,y); returns the created form handle id
+-- Deprecated
 function Utils.createBizhawkForm(title, width, height, x, y, onCloseFunc, blockInput)
-	title = title or "Form"
-	width = width or 600
-	height = height or 600
-	x = x or 100
-	y = y or 50
-	blockInput = (blockInput == nil) or (blockInput == true) -- default to true
-
-	-- By default, disable mouse inputs and resume them when the prompt closes
-	-- If a close func is provided, the caller needs to manage disabling/enabling mouse inputs instead
-	if onCloseFunc == nil then
-		Input.allowMouse = false
-		onCloseFunc = Utils.closeBizhawkForm
-	end
-
-	Program.destroyActiveForm()
-	Input.resumeMouse = false -- closing any active form resumes inputs, which we don't want yet
-	local form = forms.newform(width, height, title, onCloseFunc)
-	Program.activeFormId = form
-	Utils.setFormLocation(form, x, y)
-	if Main.emulator == Main.EMU.BIZHAWK29 or Main.emulator == Main.EMU.BIZHAWK_FUTURE then
-		local property = "BlocksInputWhenFocused"
-		if not Utils.isNilOrEmpty(forms.getproperty(form, property)) then
-			forms.setproperty(form, property, blockInput)
-		end
-	end
-
-	return form
+	local form = ExternalUI.BizForms.createForm(title, width, height, x, y, onCloseFunc, blockInput)
+	return form.ControlId
 end
 
+-- Deprecated
 function Utils.closeBizhawkForm(form)
-	form = form or Program.activeFormId
-	client.unpause()
-	forms.destroy(form)
-	Program.activeFormId = 0
-	Input.resumeMouse = true
+	ExternalUI.BizForms.destroyForm(form)
 end
 
 function Utils.randomPokemonID()
@@ -617,7 +602,7 @@ function Utils.getDetailedEvolutionsInfo(evoMethod)
 		if Program.GameData.friendshipRequired ~= nil and Program.GameData.friendshipRequired > 1 then
 			amt = Program.GameData.friendshipRequired
 		else
-			amt = 220
+			amt = PokemonData.Values.FriendshipRequiredToEvo
 		end
 		return { string.format(friendFormat, amt) }
 	end
@@ -1048,15 +1033,9 @@ function Utils.getWordWrapLines(str, limit)
 	return lines
 end
 
---sets the form location relative to the game window
---this function does what the built in forms.setlocation function supposed to do
---currently that function is bugged and should be fixed in 2.9
+-- Deprecated
 function Utils.setFormLocation(handle, x, y)
-	if handle == nil then return end
-	local ribbonHight = 64 -- so we are below the ribbon menu
-	local actualLocation = client.transformPoint(x,y)
-	forms.setproperty(handle, "Left", client.xpos() + actualLocation['x'] )
-	forms.setproperty(handle, "Top", client.ypos() + actualLocation['y'] + ribbonHight)
+	ExternalUI.BizForms.setWindowLocation(handle, x, y)
 end
 
 function Utils.getSaveBlock1Addr()
@@ -1089,7 +1068,7 @@ function Utils.getGameStat(statIndex)
 	local saveBlock1Addr = Utils.getSaveBlock1Addr()
 	local gameStatsAddr = saveBlock1Addr + GameSettings.gameStatsOffset
 
-	local gameStatValue = Memory.readdword(gameStatsAddr + statIndex * 0x4)
+	local gameStatValue = Memory.readdword(gameStatsAddr + statIndex * Program.Addresses.sizeofGameStat)
 
 	local key = Utils.getEncryptionKey(4) -- Want a 32-bit key
 	if key ~= nil then
@@ -1105,7 +1084,12 @@ end
 ---@return number starterChoice
 function Utils.getStarterMonChoice()
 	local saveblock1Addr = Utils.getSaveBlock1Addr()
-	local varOffset = GameSettings.game == 3 and 0x62 or 0x46
+	local varOffset
+	if GameSettings.game == 3 then
+		varOffset = Program.Addresses.offsetStarterMonChoiceFRLG
+	else
+		varOffset = Program.Addresses.offsetStarterMonChoiceRSE
+	end
 	return 1 + Memory.readbyte(saveblock1Addr + GameSettings.gameVarsOffset + varOffset)
 end
 

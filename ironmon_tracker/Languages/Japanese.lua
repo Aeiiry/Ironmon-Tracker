@@ -92,6 +92,9 @@ ScreenResources{
 		WATER37 = {
 			abbreviation = "37/WTR", -- NEEDS TRANSLATION
 		},
+		WATER37_REV = {
+			abbreviation = "WTR/37", -- NEEDS TRANSLATION
+		},
 		EEVEE_STONES = {
 			abbreviation = "STONE", -- NEEDS TRANSLATION
 			detailed = "5 Diff. Stones", -- NEEDS TRANSLATION
@@ -259,7 +262,7 @@ ScreenResources{
 		OptionDetermineFriendship = "Determine friendship readiness", -- NEEDS TRANSLATION
 		OptionCountEnemyPP = "Count enemy PP usage", -- NEEDS TRANSLATION
 		OptionShowLastDamage = "Show last damage calcs", -- NEEDS TRANSLATION
-		OptionRevealRandomizedInfo = "Reveal info if randomized", -- NEEDS TRANSLATION
+		OptionRevealRandomizedInfo = "Show random move/type data", -- NEEDS TRANSLATION
 	},
 	QuickloadScreen = {
 		Title = "New Runs Setup", -- NEEDS TRANSLATION
@@ -289,11 +292,16 @@ ScreenResources{
 		ButtonImport = "Import theme", -- NEEDS TRANSLATION
 		ButtonExport = "Export theme", -- NEEDS TRANSLATION
 		PromptEnterThemeCode = "Enter a theme code string to import (Ctrl+V to paste)", -- NEEDS TRANSLATION
+		PromptImportError = "Error importing: Invalid theme code.", -- NEEDS TRANSLATION
 		PromptThemeFor = "Theme for", -- NEEDS TRANSLATION
 		PromptCopyThemeCode = "Copy the theme code below (Ctrl+C)", -- NEEDS TRANSLATION
 		PromptSelectPreset = "Select a Theme preset to preview", -- NEEDS TRANSLATION
 		PromptSaveAsTitle = "Save Theme As", -- NEEDS TRANSLATION
 		PromptEnterNameForTheme = "Enter a name for this Theme", -- NEEDS TRANSLATION
+		PromptCantUseReserved = "Cannot use a reserved Theme name.", -- NEEDS TRANSLATION
+		PromptCantUseConsecutiveChars = "Name cannot have 6 consecutive hexcode characters (0-9A-F)", -- NEEDS TRANSLATION
+		PromptNameAlreadyInUse = "A Theme with that name already exists. Overwrite?", -- NEEDS TRANSLATION
+		OptionColorStatNumber = "Color stat numbers by nature ", -- NEEDS TRANSLATION
 		OptionColorBar = "Show color bar for move types", -- NEEDS TRANSLATION
 		OptionTextShadows = "Text shadows", -- NEEDS TRANSLATION
 		ButtonEditColors = "Edit Theme Colors", -- NEEDS TRANSLATION
@@ -552,6 +560,7 @@ ScreenResources{
 		LabelRandomSeed = "Random Seed", -- NEEDS TRANSLATION
 		LabelSettingsString = "Settings String", -- NEEDS TRANSLATION
 		ButtonShareSeed = "Share Seed", -- NEEDS TRANSLATION
+		CheckboxShowUnlearnableGymTMs = "Show unlearnable Gym TMs", -- NEEDS TRANSLATION
 		CheckboxShowPreEvolutions = "Show Pre Evolutions", -- NEEDS TRANSLATION
 		CheckboxCustomTrainerNames = "Custom Trainer Names", -- NEEDS TRANSLATION
 		CheckboxOpenBookMode = "Open Book Play Mode", -- NEEDS TRANSLATION
@@ -643,6 +652,10 @@ ScreenResources{
 		O_SendMessage = "Send chat message if successful",
 		O_AutoComplete = "Auto-complete the redeem",
 		O_RequireChosenMon = "Your pick direction must match",
+		O_WordForLeft = "Word for Left",
+		O_WordForMiddle = "Word for Middle",
+		O_WordForRight = "Word for Right",
+		O_WordForRandom = "Word for Random",
 		-- THE BELOW SCREEN LABELS NEED TRANSLATION
 		TabCommands = "Commands",
 		TabRewards = "Rewards",
@@ -684,6 +697,9 @@ ScreenResources{
 		StatusConnTypeWebSockets = "WebSockets",
 		StatusConnTypeHttp = "Http",
 		OptionAutoConnectStartup = "Auto-connect on startup",
+		PromptUpdateTitle = "Streamerbot Update Required",
+		PromptUpdateDesc1 = "Streamerbot Tracker Integration code requires an update.",
+		PromptUpdateDesc2 = "You must re-import the code to continue using Stream Connect.",
 		PromptNetworkShowMe = "Show Me",
 		PromptNetworkTurnOff = "Turn Off Stream Connect",
 		PromptDefault = "Default",
@@ -696,6 +712,7 @@ ScreenResources{
 		MenuCheckForUpdates = "Check for Updates", -- NEEDS TRANSLATION
 		MenuNewUpdateVailable = "New Update Available", -- NEEDS TRANSLATION
 		MenuLanguage = "Language", -- NEEDS TRANSLATION
+		MenuExtensions = "Extensions", -- NEEDS TRANSLATION
 		MenuCommands = "Commands", -- NEEDS TRANSLATION
 		MenuBasicCommands = "Basic Commands", -- NEEDS TRANSLATION
 		MenuOtherCommands = "Other Commands", -- NEEDS TRANSLATION
@@ -741,7 +758,7 @@ ScreenResources{
 		OptionCalculateVariableDamage = "Calculate variable damage", -- NEEDS TRANSLATION
 		OptionCountEnemyPP = "Count enemy PP usage", -- NEEDS TRANSLATION
 		OptionShowLastDamage = "Show last damage calcs", -- NEEDS TRANSLATION
-		OptionRevealRandomizedInfo = "Reveal info if randomized", -- NEEDS TRANSLATION
+		OptionRevealRandomizedInfo = "Show random move/type data", -- NEEDS TRANSLATION
 		OptionAutodetectGameLanguage = "Autodetect game language", -- NEEDS TRANSLATION
 		OptionPremadeRoms = "Use premade ROMs", -- NEEDS TRANSLATION
 		OptionGenerateRom = "Generate a ROM each time", -- NEEDS TRANSLATION
@@ -749,6 +766,7 @@ ScreenResources{
 		OptionRandomizerJar = "Randomizer JAR", -- NEEDS TRANSLATION
 		OptionSourceRom = "Source ROM", -- NEEDS TRANSLATION
 		OptionSettingsFile = "Settings File", -- NEEDS TRANSLATION
+		OptionAllowCustomCode = "Allow custom code to run", -- NEEDS TRANSLATION
 		AnimatedPopoutRequired = "The Animated Pokemon popout add-on must be installed separately.\n Refer to the Tracker Wiki for more details on setting this up.", -- NEEDS TRANSLATION
 		JarFileRequired = "A '.jar' file is required; please enter the full file path to your Randomizer JAR file.", -- NEEDS TRANSLATION
 		GbaFileRequired = "A '.gba' file is required; please enter the full file path to your GBA ROM file.", -- NEEDS TRANSLATION
@@ -801,6 +819,9 @@ ScreenResources{
 		LanguageChangeWith = "Change your language with", -- NEEDS TRANSLATION
 		LanguageHeaderTag = "Tag", -- NEEDS TRANSLATION
 		LanguageHeaderLang = "Language", -- NEEDS TRANSLATION
+		ExtensionsInstallNewWith = "Install new extensions with", -- NEEDS TRANSLATION
+		ExtensionsInstalledExtensions = "Installed Extensions", -- NEEDS TRANSLATION
+		ExtensionsEnableDisable = "Enable/disable with", -- NEEDS TRANSLATION
 		CommandsDesc = "To use, type into below textbox. Example command", -- NEEDS TRANSLATION
 		CommandsUsageSyntax = "Usage Syntax", -- NEEDS TRANSLATION
 		CommandsExampleUsage = "Example Usage", -- NEEDS TRANSLATION
@@ -923,6 +944,9 @@ ScreenResources{
 		LanguageError1 = "Where 'language' is the name or # of a language. Check the Language sidebar menu.", -- NEEDS TRANSLATION
 		LanguageError2 = "Unable to find language", -- NEEDS TRANSLATION
 		LanguageSuccess = "The Tracker's display language has been updated.", -- NEEDS TRANSLATION
+		InstallExtDesc = "Installs new Extension files from the Tracker's extensions folder.", -- NEEDS TRANSLATION
+		InstallExtSuccess1 = "New extensions have been installed!", -- NEEDS TRANSLATION
+		InstallExtSuccess2 = "No new extension files found in the Tracker's extensions folder.", -- NEEDS TRANSLATION
 	},
 }
 
@@ -2187,7 +2211,7 @@ GameResources{
 		},
 		{
 			NameKey = "Bide",
-			Description = "Endures attacks for two consectuive turns. Deals damage equal to twice the damage received.", -- NEEDS TRANSLATION
+			Description = "Endures attacks for two consecutive turns. Deals damage equal to twice the damage received.", -- NEEDS TRANSLATION
 		},
 		{
 			NameKey = "Metronome",
@@ -3055,7 +3079,7 @@ GameResources{
 		},
 		{
 			NameKey = "Iron Defense",
-			Description = "Deals raises the user's Defense stat by two stages.", -- NEEDS TRANSLATION
+			Description = "Raises the user's Defense stat by two stages.", -- NEEDS TRANSLATION
 		},
 		{
 			NameKey = "Block",
@@ -3063,7 +3087,7 @@ GameResources{
 		},
 		{
 			NameKey = "Howl",
-			Description = "Deals raises the user's Attack stat by one stage.", -- NEEDS TRANSLATION
+			Description = "Raises the user's Attack stat by one stage.", -- NEEDS TRANSLATION
 		},
 		{
 			NameKey = "Dragon Claw",

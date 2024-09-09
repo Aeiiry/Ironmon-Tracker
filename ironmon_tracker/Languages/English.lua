@@ -92,6 +92,9 @@ ScreenResources{
 		WATER37 = {
 			abbreviation = "37/WTR",
 		},
+		WATER37_REV = {
+			abbreviation = "WTR/37",
+		},
 		EEVEE_STONES = {
 			abbreviation = "STONE",
 			detailed = "5 Diff. Stones",
@@ -257,7 +260,7 @@ ScreenResources{
 		OptionDetermineFriendship = "Determine friendship readiness",
 		OptionCountEnemyPP = "Count enemy PP usage",
 		OptionShowLastDamage = "Show last damage calcs",
-		OptionRevealRandomizedInfo = "Reveal info if randomized",
+		OptionRevealRandomizedInfo = "Show random move/type data",
 	},
 	QuickloadScreen = {
 		Title = "New Runs Setup",
@@ -287,11 +290,16 @@ ScreenResources{
 		ButtonImport = "Import theme",
 		ButtonExport = "Export theme",
 		PromptEnterThemeCode = "Enter a theme code string to import (Ctrl+V to paste)",
+		PromptImportError = "Error importing: Invalid theme code.",
 		PromptThemeFor = "Theme for",
 		PromptCopyThemeCode = "Copy the theme code below (Ctrl+C)",
 		PromptSelectPreset = "Select a Theme preset to preview",
 		PromptSaveAsTitle = "Save Theme As",
 		PromptEnterNameForTheme = "Enter a name for this Theme",
+		PromptCantUseReserved = "Cannot use a reserved Theme name.",
+		PromptCantUseConsecutiveChars = "Name cannot have 6 consecutive hexcode characters (0-9A-F)",
+		PromptNameAlreadyInUse = "A Theme with that name already exists. Overwrite?",
+		OptionColorStatNumber = "Color stat numbers by nature ",
 		OptionColorBar = "Show color bar for move types",
 		OptionTextShadows = "Text shadows",
 		ButtonEditColors = "Edit Theme Colors",
@@ -550,6 +558,7 @@ ScreenResources{
 		LabelRandomSeed = "Random Seed",
 		LabelSettingsString = "Settings String",
 		ButtonShareSeed = "Share Seed",
+		CheckboxShowUnlearnableGymTMs = "Show unlearnable Gym TMs",
 		CheckboxShowPreEvolutions = "Show Pre Evolutions",
 		CheckboxCustomTrainerNames = "Custom Trainer Names",
 		CheckboxOpenBookMode = "Open Book Play Mode",
@@ -640,6 +649,10 @@ ScreenResources{
 		O_SendMessage = "Send chat message if successful",
 		O_AutoComplete = "Auto-complete the redeem",
 		O_RequireChosenMon = "Your pick direction must match",
+		O_WordForLeft = "Word for Left",
+		O_WordForMiddle = "Word for Middle",
+		O_WordForRight = "Word for Right",
+		O_WordForRandom = "Word for Random",
 		TabCommands = "Commands",
 		TabRewards = "Rewards",
 		TabQueue = "Queue",
@@ -680,6 +693,9 @@ ScreenResources{
 		StatusConnTypeWebSockets = "WebSockets",
 		StatusConnTypeHttp = "Http",
 		OptionAutoConnectStartup = "Auto-connect on startup",
+		PromptUpdateTitle = "Streamerbot Update Required",
+		PromptUpdateDesc1 = "Streamerbot Tracker Integration code requires an update.",
+		PromptUpdateDesc2 = "You must re-import the code to continue using Stream Connect.",
 		PromptNetworkShowMe = "Show Me",
 		PromptNetworkTurnOff = "Turn Off Stream Connect",
 		PromptDefault = "Default",
@@ -692,6 +708,7 @@ ScreenResources{
 		MenuCheckForUpdates = "Check for Updates",
 		MenuNewUpdateVailable = "New Update Available",
 		MenuLanguage = "Language",
+		MenuExtensions = "Extensions",
 		MenuCommands = "Commands",
 		MenuBasicCommands = "Basic Commands",
 		MenuOtherCommands = "Other Commands",
@@ -737,7 +754,7 @@ ScreenResources{
 		OptionCalculateVariableDamage = "Calculate variable damage",
 		OptionCountEnemyPP = "Count enemy PP usage",
 		OptionShowLastDamage = "Show last damage calcs",
-		OptionRevealRandomizedInfo = "Reveal info if randomized",
+		OptionRevealRandomizedInfo = "Show random move/type data",
 		OptionAutodetectGameLanguage = "Autodetect game language",
 		OptionPremadeRoms = "Use premade ROMs",
 		OptionGenerateRom = "Generate a ROM each time",
@@ -745,6 +762,7 @@ ScreenResources{
 		OptionRandomizerJar = "Randomizer JAR",
 		OptionSourceRom = "Source ROM",
 		OptionSettingsFile = "Settings File",
+		OptionAllowCustomCode = "Allow custom code to run",
 		AnimatedPopoutRequired = "The Animated Pokemon popout add-on must be installed separately.\n Refer to the Tracker Wiki for more details on setting this up.",
 		JarFileRequired = "A '.jar' file is required; please enter the full file path to your Randomizer JAR file.",
 		GbaFileRequired = "A '.gba' file is required; please enter the full file path to your GBA ROM file.",
@@ -797,6 +815,10 @@ ScreenResources{
 		LanguageChangeWith = "Change your language with",
 		LanguageHeaderTag = "Tag",
 		LanguageHeaderLang = "Language",
+		ExtensionsInstallNewWith = "Install new extensions with",
+		ExtensionsInstalledExtensions = "Installed Extensions",
+		ExtensionsEnableDisable = "Enable/disable with",
+
 		CommandsDesc = "To use, type into below textbox. Example command",
 		CommandsUsageSyntax = "Usage Syntax",
 		CommandsExampleUsage = "Example Usage",
@@ -919,6 +941,9 @@ ScreenResources{
 		LanguageError1 = "Where 'language' is the name or # of a language. Check the Language sidebar menu.",
 		LanguageError2 = "Unable to find language",
 		LanguageSuccess = "The Tracker's display language has been updated.",
+		InstallExtDesc = "Installs new Extension files from the Tracker's extensions folder.",
+		InstallExtSuccess1 = "New extensions have been installed!",
+		InstallExtSuccess2 = "No new extension files found in the Tracker's extensions folder.",
 	},
 }
 
@@ -2183,7 +2208,7 @@ GameResources{
 		},
 		{
 			NameKey = "Bide",
-			Description = "Endures attacks for two consectuive turns. Deals damage equal to twice the damage received.",
+			Description = "Endures attacks for two consecutive turns. Deals damage equal to twice the damage received.",
 		},
 		{
 			NameKey = "Metronome",
@@ -3051,7 +3076,7 @@ GameResources{
 		},
 		{
 			NameKey = "Iron Defense",
-			Description = "Deals raises the user's Defense stat by two stages.",
+			Description = "Raises the user's Defense stat by two stages.",
 		},
 		{
 			NameKey = "Block",
@@ -3059,7 +3084,7 @@ GameResources{
 		},
 		{
 			NameKey = "Howl",
-			Description = "Deals raises the user's Attack stat by one stage.",
+			Description = "Raises the user's Attack stat by one stage.",
 		},
 		{
 			NameKey = "Dragon Claw",

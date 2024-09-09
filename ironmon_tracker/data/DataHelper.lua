@@ -116,7 +116,7 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 
 	local targetInfo = Battle.getDoublesCursorTargetInfo()
 	local viewedPokemon = Battle.getViewedPokemon(data.x.viewingOwn)
-	local opposingPokemon = Tracker.getPokemon(targetInfo.slot, targetInfo.isOwner) -- currently used exclusively for Low Kick weight calcs
+	local opposingPokemon = Tracker.getPokemon(targetInfo.slot, targetInfo.isOwner) -- For Low Kick weight calcs and OHKO moves
 	local useOpenBookInfo = not data.x.viewingOwn and Options["Open Book Play Mode"]
 
 	if viewedPokemon == nil or viewedPokemon.pokemonID == 0 or not Program.isValidMapLocation() then
@@ -141,7 +141,7 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 	-- If there's a nickname that's different that the original Pokémon name and option is on, use that name
 	if Options["Show nicknames"] and not Utils.isNilOrEmpty(viewedPokemon.nickname) and Utils.toLowerUTF8(pokemonInternal.name) ~= Utils.toLowerUTF8(viewedPokemon.nickname) then
 		data.p.name = Utils.formatSpecialCharacters(viewedPokemon.nickname)
-	elseif viewedPokemon.pokemonID == 413 then -- Ghost
+	elseif viewedPokemon.pokemonID == PokemonData.Values.GhostId then
 		data.p.name = viewedPokemon.name or Constants.BLANKLINE
 	else
 		data.p.name = pokemonInternal.name or viewedPokemon.name or Constants.BLANKLINE
@@ -154,8 +154,8 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 	data.p.status = MiscData.StatusCodeMap[viewedPokemon.status] or ""
 	data.p.curExp = viewedPokemon.currentExp or 0
 	data.p.totalExp = viewedPokemon.totalExp or 100
-	data.p.friendship = viewedPokemon.friendship or 70 -- Current value; 70 is default for most Pokémon
-	data.p.friendshipBase = pokemonInternal.friendshipBase or 70 -- The starting value of the Pokémon
+	data.p.friendship = viewedPokemon.friendship or PokemonData.Values.DefaultBaseFriendship -- Current value
+	data.p.friendshipBase = pokemonInternal.friendshipBase or PokemonData.Values.DefaultBaseFriendship -- The starting value of the Pokémon
 
 	-- Add: Stats, Stages, and Nature
 	data.p.gender = viewedPokemon.gender
@@ -272,18 +272,18 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 		move.starred = not Utils.isNilOrEmpty(stars[i])
 
 		-- Update: Specific Moves
-		if move.id == 237 then -- 237 = Hidden Power
+		if move.id == MoveData.Values.HiddenPowerId then
 			if data.x.viewingOwn then
 				move.type = Tracker.getHiddenPowerType(viewedPokemon)
 			else
 				move.type = MoveData.HIDDEN_POWER_NOT_SET
 			end
-			move.category = MoveData.TypeToCategory[move.type]
+			move.category = MoveData.getCategory(move.id, move.type)
 		elseif Options["Calculate variable damage"] then
-			if move.id == 311 then -- 311 = Weather Ball
+			if move.id == MoveData.Values.WeatherBallId then
 				move.type, move.power = Utils.calculateWeatherBall(move.type, move.power)
-				move.category = MoveData.TypeToCategory[move.type]
-			elseif move.id == 67 and Battle.inActiveBattle() and opposingPokemon ~= nil then -- 67 = Low Kick
+				move.category = MoveData.getCategory(move.id, move.type)
+			elseif move.id == MoveData.Values.LowKickId and Battle.inActiveBattle() and opposingPokemon ~= nil then
 				local targetWeight
 				if opposingPokemon.weight ~= nil then
 					targetWeight = opposingPokemon.weight
@@ -293,12 +293,20 @@ function DataHelper.buildTrackerScreenDisplay(forceView)
 					targetWeight = 0
 				end
 				move.power = Utils.calculateWeightBasedDamage(move.power, targetWeight)
+			elseif MoveData.isOHKO(move.id) and Battle.inActiveBattle() and opposingPokemon ~= nil then
+				local levelDiff = viewedPokemon.level - opposingPokemon.level
+				if levelDiff > 0 then
+					local accAsNum = tonumber(move.accuracy or "") or 30 -- 30 is default OHKO accuracy
+					move.accuracy = tostring(math.min(accAsNum + levelDiff, 100))
+				elseif levelDiff < 0 then
+					move.accuracy = "X " -- Ineffective against higher level pokemon
+				end
 			elseif data.x.viewingOwn then
-				if move.id == 175 or move.id == 179 then -- 175 = Flail, 179 = Reversal
+				if move.id == MoveData.Values.FlailId or move.id == MoveData.Values.ReversalId then
 					move.power = Utils.calculateLowHPBasedDamage(move.power, viewedPokemon.curHP, viewedPokemon.stats.hp)
-				elseif move.id == 284 or move.id == 323 then -- 284 = Eruption, 323 = Water Spout
+				elseif move.id == MoveData.Values.EruptionId or move.id == MoveData.Values.WaterSpoutId then
 					move.power = Utils.calculateHighHPBasedDamage(move.power, viewedPokemon.curHP, viewedPokemon.stats.hp)
-				elseif move.id == 216 or move.id == 218 then -- 216 = Return, 218 = Frustration
+				elseif move.id == MoveData.Values.ReturnId or move.id == MoveData.Values.FrustrationId then
 					move.power = Utils.calculateFriendshipBasedDamage(move.power, viewedPokemon.friendship)
 				end
 			end
@@ -477,9 +485,9 @@ function DataHelper.buildMoveInfoDisplay(moveId)
 	local ownLeadPokemon = Battle.getViewedPokemon(true)
 	local hideSomeInfo = not Options["Reveal info if randomized"] and not Utils.pokemonHasMove(ownLeadPokemon, move.id)
 
-	if moveId == 237 and Utils.pokemonHasMove(ownLeadPokemon, 237) then -- 237 = Hidden Power
+	if moveId == MoveData.Values.HiddenPowerId and Utils.pokemonHasMove(ownLeadPokemon, MoveData.Values.HiddenPowerId) then
 		data.m.type = Tracker.getHiddenPowerType(ownLeadPokemon)
-		data.m.category = MoveData.TypeToCategory[data.m.type]
+		data.m.category = MoveData.getCategory(moveId, data.m.type)
 		data.x.ownHasHiddenPower = true
 	end
 
@@ -487,7 +495,7 @@ function DataHelper.buildMoveInfoDisplay(moveId)
 	if hideSomeInfo then
 		if MoveData.IsRand.moveType then
 			data.m.type = PokemonData.Types.UNKNOWN
-			if data.m.category ~= MoveData.Categories.STATUS then
+			if data.m.category ~= MoveData.Categories.STATUS and not MoveData.IsRand.moveCategory then
 				data.m.category = Constants.HIDDEN_INFO
 			end
 		end
@@ -1035,20 +1043,42 @@ end
 ---@param params string?
 ---@return string response
 function DataHelper.EventRequests.getRoute(params)
-	local routeId = getRouteIdOrDefault(params)
+	-- Check for optional parameters
+	local paramsLower = Utils.toLowerUTF8(params or "")
+	local option
+	for key, val in pairs(RouteData.EncounterArea or {}) do
+		if Utils.containsText(paramsLower, val, true) then
+			paramsLower = Utils.replaceText(paramsLower, Utils.toLowerUTF8(val), "", true)
+			option = key
+			break
+		end
+	end
+	-- If option keywords were removed, trim any whitespace
+	if option then
+		-- Removes duplicate, consecutive whitespaces, and leading/trailer whitespaces
+		paramsLower = ((paramsLower:gsub("(%s)%s+", "%1")):gsub("^%s*(.-)%s*$", "%1"))
+	end
+
+	local routeId = getRouteIdOrDefault(paramsLower)
 	local route = RouteData.Info[routeId or false]
 	if not route then
 		return buildDefaultResponse(params)
 	end
 
 	local info = {}
-	-- Check for trainers in the route
-	if route.trainers and #route.trainers > 0 then
+	-- Check for trainers in the route, but only if a specific encounter area wasnt requested
+	if not option and route.trainers and #route.trainers > 0 then
 		local defeatedTrainers, totalTrainers = Program.getDefeatedTrainersByLocation(routeId)
 		table.insert(info, string.format("%s: %s/%s", "Trainers defeated", #defeatedTrainers, totalTrainers))
 	end
 	-- Check for wilds in the route
-	local encounterArea = RouteData.getNextAvailableEncounterArea(routeId, RouteData.EncounterArea.TRAINER) -- for now, default to the first area type (usually Walking)
+	local encounterArea
+	if option then
+		encounterArea = RouteData.EncounterArea[option] or RouteData.EncounterArea.LAND
+	else
+		-- Default to the first area type (usually Walking)
+		encounterArea = RouteData.getNextAvailableEncounterArea(routeId, RouteData.EncounterArea.TRAINER)
+	end
 	local wildIds = RouteData.getEncounterAreaPokemon(routeId, encounterArea)
 	if #wildIds > 0 then
 		local seenIds = Tracker.getRouteEncounters(routeId, encounterArea or RouteData.EncounterArea.LAND)
@@ -1065,7 +1095,12 @@ function DataHelper.EventRequests.getRoute(params)
 		table.insert(info, wildsText)
 	end
 
-	local prefix = string.format("%s %s", route.name, OUTPUT_CHAR)
+	local prefix
+	if option then
+		prefix = string.format("%s: %s %s", route.name, Utils.firstToUpperEachWord(encounterArea), OUTPUT_CHAR)
+	else
+		prefix = string.format("%s %s", route.name, OUTPUT_CHAR)
+	end
 	return buildResponse(prefix, info)
 end
 
@@ -1746,6 +1781,30 @@ function DataHelper.EventRequests.getLog(params)
 	for _, button in ipairs(Utils.getSortedList(LogTabMisc.Buttons or {})) do
 		table.insert(info, string.format("%s %s", button:getText(), button:getValue()))
 	end
+	return buildResponse(prefix, info)
+end
+
+---@param params string?
+---@return string response
+function DataHelper.EventRequests.getBallQueue(params)
+	local prefix = string.format("%s %s", "BallQueue", OUTPUT_CHAR)
+
+	local info = {}
+
+	local queueSize = 0
+	for _, _ in pairs(EventHandler.Queues.BallRedeems.Requests or {}) do
+		queueSize = queueSize + 1
+	end
+	if queueSize == 0 then
+		return buildResponse(prefix, "The pick ball queue is empty.")
+	end
+	table.insert(info, string.format("%s: %s", "Size", queueSize))
+
+	local request = EventHandler.Queues.BallRedeems.ActiveRequest
+	if request and request.Username then
+		table.insert(info, string.format("%s: %s - %s", "Current pick", request.Username, request.SanitizedInput or "N/A"))
+	end
+
 	return buildResponse(prefix, info)
 end
 
