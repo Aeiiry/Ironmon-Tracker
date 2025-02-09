@@ -141,7 +141,8 @@ function LogTabTMs.buildGymTMButtons()
 		local trainerLog = RandomizerLog.Data.Trainers[tmButton.trainerId or -1] or {}
 
 		if tmButton.group == "Gym TMs" then
-			local badgeName = GameSettings.badgePrefix .. "_badge" .. tmButton.gymNumber
+			local badgePrefix = Constants.Badges[GameSettings.game].Prefix
+			local badgeName = badgePrefix .. "_badge" .. tmButton.gymNumber
 			local badgeImage = FileManager.buildImagePath(FileManager.Folders.Badges, badgeName, FileManager.Extensions.BADGE)
 			local gymLabel = string.format("%s %s", Resources.LogOverlay.FilterGym, tmButton.gymNumber or 0)
 
@@ -167,8 +168,10 @@ function LogTabTMs.buildGymTMButtons()
 				end,
 				onClick = function(self)
 					LogOverlay.Windower:changeTab(LogTabTrainerDetails, 1, 1, self.trainerId)
-					Program.redraw(true)
-					-- InfoScreen.changeScreenView(InfoScreen.Screens.TRAINER_INFO, self.trainerId) -- TODO: (future feature) implied redraw
+					if TrainerInfoScreen.buildScreen(self.trainerId) then
+						TrainerInfoScreen.previousScreen = TrackerScreen
+						Program.changeScreenView(TrainerInfoScreen)
+					end
 				end,
 			}
 			table.insert(LogTabTMs.GymLabelButtons, gymButton)

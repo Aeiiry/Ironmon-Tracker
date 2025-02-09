@@ -170,7 +170,7 @@ function StreamConnectOverlay.createTabButtons()
 		local tabWidth = (tabPadding * 2) + Utils.calcWordPixelLength(tabText)
 		SCREEN.Buttons["Tab" .. tab.tabKey] = {
 			type = Constants.ButtonTypes.NO_BORDER,
-			getText = function(self) return tabText end,
+			getCustomText = function(self) return tabText end,
 			tab = SCREEN.Tabs[tab.tabKey],
 			isSelected = false,
 			box = {	startX, startY, tabWidth, TAB_HEIGHT },
@@ -193,8 +193,8 @@ function StreamConnectOverlay.createTabButtons()
 				if self.isSelected then
 					gui.drawLine(x + 1, y + h, x + w - 1, y + h, bgColor) -- Remove bottom edge
 				end
-				local centeredOffsetX = Utils.getCenteredTextX(self:getText(), w) - 2
-				Drawing.drawText(x + centeredOffsetX, y, self:getText(), Theme.COLORS[self.textColor], shadowcolor)
+				local centeredOffsetX = Utils.getCenteredTextX(self:getCustomText(), w) - 2
+				Drawing.drawText(x + centeredOffsetX, y, self:getCustomText(), Theme.COLORS[self.textColor], shadowcolor)
 			end,
 			onClick = function(self) SCREEN.changeTab(self.tab) end,
 		}
@@ -295,7 +295,34 @@ local function buildCommandsTab()
 			onClick = function(self) SCREEN.openCommandRenamePrompt(event) end,
 		}
 		table.insert(SCREEN.Pager.Buttons, btnRename)
-		addRightAligned(btnRename)
+
+		-- Most commands don't have options, but if so, make room for a second button
+		if event.Options and #event.Options > 0 then
+			btnRename.updateSelf = function(self)
+				self.box[2] = buttonRow.box[2] + ROW_PADDING
+			end
+
+			local btnOptions = {
+				type = Constants.ButtonTypes.FULL_BORDER,
+				getText = function(self) return Resources.StreamConnect.ButtonOptions end,
+				textColor = SCREEN.Colors.text,
+				box = { -1, -1, -1, 11 },
+				boxColors = { SCREEN.Colors.border, SCREEN.Colors.boxFill },
+				isVisible = function(self) return buttonRow:isVisible() and event.Options and #event.Options > 0 end,
+				updateSelf = function(self)
+					self.box[2] = btnRename.box[2] + ROW_HEIGHT / 2
+					self.box[3] = Utils.calcWordPixelLength(self:getText()) + 5 -- Auto resize
+				end,
+				onClick = function(self) StreamConnectOverlay.openEventOptionsPrompt(event) end,
+			}
+			btnOptions:updateSelf()
+			table.insert(SCREEN.Pager.Buttons, btnOptions)
+			btnRename.box[1] = _rightEdgeX - ROW_PADDING - btnRename.box[3]
+			btnOptions.box[1] = _rightEdgeX - ROW_PADDING - btnRename.box[3]
+			_rightEdgeX = btnRename.box[1] - ROW_PADDING
+		else
+			addRightAligned(btnRename)
+		end
 	end
 	SCREEN.Pager:realignButtonsToGrid(SCREEN.Canvas.x + ROW_MARGIN, SCREEN.Canvas.y + ROW_MARGIN)
 end
@@ -704,12 +731,12 @@ local function buildGameTab()
 		local btnName = {
 			type = Constants.ButtonTypes.NO_BORDER,
 			getText = function(self) return event.Name end,
-			textColor = SCREEN.Colors.text,
+			textColor = SCREEN.Colors.highlight,
 			box = { -1, -1, btnWidth, 11 },
 			isVisible = function(self) return buttonRow:isVisible() end,
 			updateSelf = function(self)
-				self.box[2] = buttonRow.box[2] + ROW_HEIGHT / 2 - ROW_PADDING - 2
-				self.textColor = btnEnabled.toggleState and SCREEN.Colors.text or "Negative text"
+				self.box[2] = buttonRow.box[2] + ROW_PADDING
+				self.textColor = btnEnabled.toggleState and SCREEN.Colors.highlight or "Negative text"
 			end,
 			-- draw = function(self, shadowcolor)
 			-- 	Drawing.drawUnderline(self)
@@ -718,7 +745,22 @@ local function buildGameTab()
 			-- end,
 		}
 		table.insert(SCREEN.Pager.Buttons, btnName)
-		addLeftAligned(btnName)
+
+		local btnTriggerEffect = {
+			type = Constants.ButtonTypes.PIXELIMAGE,
+			image = Constants.PixelImages.REFERENCE_RIGHT,
+			getText = function(self) return event.TriggerEffect or "" end,
+			textColor = SCREEN.Colors.text,
+			box = { -1, -1, 11, 11 },
+			isVisible = function(self) return buttonRow:isVisible() and not Utils.isNilOrEmpty(self:getText()) end,
+			updateSelf = function(self)
+				self.box[2] = btnName.box[2] + ROW_HEIGHT / 2
+			end,
+		}
+		table.insert(SCREEN.Pager.Buttons, btnTriggerEffect)
+		btnName.box[1] = _leftEdgeX + ROW_PADDING
+		btnTriggerEffect.box[1] = _leftEdgeX + ROW_PADDING + 2
+		_leftEdgeX = btnName.box[1] + btnWidth + ROW_PADDING
 	end
 
 	local bottomRowY = SCREEN.Canvas.y + SCREEN.Canvas.h - 15
@@ -1207,7 +1249,9 @@ function StreamConnectOverlay.openCommandRolesPrompt()
 		for _, roleKey in ipairs(orderedRoles) do
 			ExternalUI.BizForms.setChecked(roleCheckboxes[roleKey], true)
 		end
-		ExternalUI.BizForms.setText(customRoleTextbox, "")
+		if customRoleTextbox then
+			ExternalUI.BizForms.setText(customRoleTextbox, "")
+		end
 		enableDisableAll()
 	end)
 	form:createButton(Resources.AllScreens.Cancel, 210, buttonRowY, function()
@@ -1217,7 +1261,7 @@ end
 
 function StreamConnectOverlay.openEventOptionsPrompt(event)
 	local x, y, lineHeight = 20, 15, 20
-	local form = ExternalUI.BizForms.createForm("Edit Reward Options", 320, 130 + (#event.Options * lineHeight))
+	local form = ExternalUI.BizForms.createForm("Edit Options", 320, 130 + (#event.Options * lineHeight))
 
 	form:createLabel(event.Name, x, y)
 	y = y + lineHeight + 5

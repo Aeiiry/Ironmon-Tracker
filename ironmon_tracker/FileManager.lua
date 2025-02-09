@@ -3,10 +3,14 @@ FileManager = {}
 -- Define file separator. Windows is \ and Linux is /
 FileManager.slash = package.config:sub(1,1) or "\\"
 
+-- File/Folder names cannot use the characters included in this pattern. These include < > : " / \ | ? *
+FileManager.INVALID_FILE_PATTERN = '[%<%>%:%"%/%\\%|%?%*]'
+
 FileManager.Folders = {
 	TrackerCode = "ironmon_tracker",
 	Custom = "extensions",
 	Quickload = "quickload",
+	TrackerNotes = "tracker_notes", -- gets created in `FileManager.setupFolders()`
 	SavedGames = "saved_games", -- needs to be created first to be used
 	BackupSaves = "backup_saves", -- needs to be created first to be used
 	DataCode = "data",
@@ -14,6 +18,7 @@ FileManager.Folders = {
 	ScreensCode = "screens",
 	Languages = "Languages",
 	RandomizerSettings = "RandomizerSettings",
+	GameAddresses = "GameAddresses",
 	Images = "images",
 	Trainers = "trainers",
 	TrainersPortraits = "trainerPortraits",
@@ -35,6 +40,8 @@ FileManager.Files = {
 	ERROR_LOG = FileManager.Folders.TrackerCode .. FileManager.slash .. "errorlog.txt",
 	CRASH_REPORT = FileManager.Folders.TrackerCode .. FileManager.slash .. "crashreport.txt",
 	KNOWN_WORKING_DIR = FileManager.Folders.TrackerCode .. FileManager.slash .. "knownworkingdir.txt",
+	NEWRUN_PROFILES = FileManager.Folders.TrackerCode .. FileManager.slash .. "NewRunProfiles.json",
+	ADDRESS_OVERRIDES = FileManager.Folders.TrackerCode .. FileManager.slash .. FileManager.Folders.GameAddresses .. FileManager.slash .. "TrackerOverrides.json",
 	LanguageCode = {
 		SpainData = "SpainData.lua",
 		ItalyData = "ItalyData.lua",
@@ -74,6 +81,7 @@ FileManager.Urls = {
 	DOWNLOAD = "https://github.com/besteon/Ironmon-Tracker/releases/latest",
 	WIKI = "https://github.com/besteon/Ironmon-Tracker/wiki",
 	DISCUSSIONS = "https://github.com/besteon/Ironmon-Tracker/discussions/389", -- Discussion: "Help us translate the Ironmon Tracker"
+	NEW_RUNS = "https://github.com/besteon/Ironmon-Tracker/wiki/New-Runs-Setup",
 	EXTENSIONS = "https://github.com/besteon/Ironmon-Tracker/wiki/Tracker-Add-ons#custom-code-extensions",
 	STREAM_CONNECT = "https://github.com/besteon/Ironmon-Tracker/wiki/Stream-Connect-Guide",
 }
@@ -96,6 +104,7 @@ FileManager.LuaCode = {
 	{ name = "MiscData", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "MiscData.lua", },
 	{ name = "RouteData", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "RouteData.lua", },
 	{ name = "DataHelper", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "DataHelper.lua", },
+	{ name = "EventData", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "EventData.lua", },
 	{ name = "RandomizerLog", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "RandomizerLog.lua", },
 	{ name = "TrainerData", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "TrainerData.lua", },
 	{ name = "SpriteData", filepath = FileManager.Folders.DataCode .. FileManager.slash .. "SpriteData.lua", },
@@ -119,6 +128,8 @@ FileManager.LuaCode = {
 	{ name = "MGBADisplay", filepath = "MGBADisplay.lua", },
 	{ name = "TrackerScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "TrackerScreen.lua", },
 	{ name = "InfoScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "InfoScreen.lua", },
+	{ name = "TrainerInfoScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "TrainerInfoScreen.lua", },
+	{ name = "TrainersOnRouteScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "TrainersOnRouteScreen.lua", },
 	{ name = "NavigationMenu", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "NavigationMenu.lua", },
 	{ name = "StartupScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "StartupScreen.lua", },
 	{ name = "UpdateScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "UpdateScreen.lua", },
@@ -126,14 +137,21 @@ FileManager.LuaCode = {
 	{ name = "ExtrasScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "ExtrasScreen.lua", },
 	{ name = "QuickloadScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "QuickloadScreen.lua", },
 	{ name = "GameOptionsScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "GameOptionsScreen.lua", },
+	{ name = "NotebookIndexScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "NotebookIndexScreen.lua", },
+	{ name = "NotebookPokemonSeen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "NotebookPokemonSeen.lua", },
+	{ name = "NotebookPokemonNoteView", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "NotebookPokemonNoteView.lua", },
+	{ name = "NotebookTrainersByArea", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "NotebookTrainersByArea.lua", },
 	{ name = "TrackedDataScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "TrackedDataScreen.lua", },
 	{ name = "LanguageScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "LanguageScreen.lua", },
 	{ name = "StatsScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "StatsScreen.lua", },
 	{ name = "RandomEvosScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "RandomEvosScreen.lua", },
 	{ name = "MoveHistoryScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "MoveHistoryScreen.lua", },
+	{ name = "CatchRatesScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "CatchRatesScreen.lua", },
 	{ name = "TypeDefensesScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "TypeDefensesScreen.lua", },
 	{ name = "HealsInBagScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "HealsInBagScreen.lua", },
+	{ name = "BattleDetailsScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "BattleDetailsScreen.lua", },
 	{ name = "GameOverScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "GameOverScreen.lua", },
+	{ name = "StatMarkingScoreSheet", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "StatMarkingScoreSheet.lua", },
 	{ name = "StreamerScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "StreamerScreen.lua", },
 	{ name = "TimeMachineScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "TimeMachineScreen.lua", },
 	{ name = "CustomExtensionsScreen", filepath = FileManager.Folders.ScreensCode .. FileManager.slash .. "CustomExtensionsScreen.lua", },
@@ -156,6 +174,15 @@ FileManager.LuaCode = {
 	-- Miscellaneous files
 	{ name = "CustomCode", filepath = "CustomCode.lua", },
 }
+
+function FileManager.setupFolders()
+	if not FileManager.getPathOverride("Tracker Data") then
+		local folder = FileManager.prependDir(FileManager.Folders.TrackerNotes, true)
+		if not FileManager.folderExists(folder) then
+			FileManager.createFolder(folder)
+		end
+	end
+end
 
 -- Returns true if a file exists at its absolute file path; false otherwise
 function FileManager.fileExists(filepath)
@@ -491,6 +518,25 @@ function FileManager.getPathOverride(key)
 	return FileManager.tryAppendSlash(folderpath)
 end
 
+---Returns the filepath of the currently loaded ROM. Note: Only works for Bizhawk emulator
+---@return string|nil filepath
+function FileManager.getLoadedRomPath()
+	if not Main.IsOnBizhawk() then
+		return nil
+	end
+	local luaconsole = client.gettool("luaconsole")
+	local luaImp = luaconsole and luaconsole.get_LuaImp()
+	local filepath = luaImp and luaImp.PathEntries and luaImp.PathEntries.LastRomPath or ""
+	if filepath ~= "" then
+		return filepath
+	end
+	return nil
+end
+
+function FileManager.getTdatFolderPath()
+	return FileManager.getPathOverride("Tracker Data") or FileManager.prependDir(FileManager.Folders.TrackerNotes, true)
+end
+
 function FileManager.buildImagePath(imageFolder, imageName, imageExtension)
 	local listOfPaths = {
 		FileManager.Folders.TrackerCode,
@@ -542,6 +588,8 @@ function FileManager.getCustomFolderPath()
 	return FileManager.prependDir(table.concat(listOfPaths, FileManager.slash))
 end
 
+---@param path string
+---@return string
 function FileManager.extractFolderNameFromPath(path)
 	if path == nil or path == "" then return "" end
 
@@ -558,6 +606,9 @@ function FileManager.extractFolderNameFromPath(path)
 	return ""
 end
 
+---@param path string
+---@param includeExtension? boolean Optional, includes the file extension; default: false
+---@return string
 function FileManager.extractFileNameFromPath(path, includeExtension)
 	if path == nil or path == "" then return "" end
 
@@ -569,6 +620,8 @@ function FileManager.extractFileNameFromPath(path, includeExtension)
 	end
 end
 
+---@param path string
+---@return string
 function FileManager.extractFileExtensionFromPath(path)
 	if path == nil or path == "" then return "" end
 
@@ -635,6 +688,15 @@ function FileManager.CopyFile(filepath, filepathCopy, overwriteOrAppend)
 	copyOfFile:close()
 
 	return true
+end
+
+function FileManager.deleteFile(filepath)
+	if (filepath or "") == "" then
+		return false
+	end
+	pcall(function()
+		os.remove(filepath)
+	end)
 end
 
 ---Writes the contents of `table` to the file at `filepath`
@@ -760,8 +822,6 @@ function FileManager.addCustomThemeToFile(themeName, themeCode)
 	local filepath = folderpath .. FileManager.Files.THEME_PRESETS
 	local file = io.open(filepath, "a")
 	if not file then
-		-- Don't really want to flood the console with error messages; if important, use Main.DisplayError()
-		-- print(string.format('> ERROR: Unable to save custom Theme "%s" to file: %s', themeName, FileManager.Files.THEME_PRESETS))
 		return
 	end
 
@@ -782,8 +842,6 @@ function FileManager.removeCustomThemeFromFile(themeName, themeCode)
 
 	local file = io.open(filepath, "w")
 	if not file then
-		-- Don't really want to flood the console with error messages; if important, use Main.DisplayError()
-		-- print(string.format('> ERROR: Unable to remove custom Theme "%s" from file: %s', themeName, FileManager.Files.THEME_PRESETS))
 		return false
 	end
 
@@ -808,8 +866,12 @@ function FileManager.removeCustomThemeFromFile(themeName, themeCode)
 	return true
 end
 
--- Recursively copies the contents of 'source' table into 'destination' table
+---Recursively copies the contents of 'source' table into 'destination' table
+---@param source table
+---@param destination? table Optional, creates a new empty table if none provided
+---@return table destination
 function FileManager.copyTable(source, destination)
+	destination = destination or {}
 	for key, val in pairs(source or {}) do
 		if type(val) == "table" then
 			destination[key] = {}
@@ -818,6 +880,7 @@ function FileManager.copyTable(source, destination)
 			destination[key] = val
 		end
 	end
+	return destination
 end
 
 --- Loads the external Json library into FileManager.JsonLibrary

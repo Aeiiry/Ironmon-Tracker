@@ -81,18 +81,18 @@ ExtrasScreen.Buttons = {
 	TimerEdit = {
 		type = Constants.ButtonTypes.FULL_BORDER,
 		getText = function(self) return Resources.ExtrasScreen.ButtonEditTime end,
-		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 5, Constants.SCREEN.MARGIN + 111, 24, 11 },
+		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 5, Constants.SCREEN.MARGIN + 134, 24, 11 },
 		isVisible = function(self) return ExtrasScreen.currentTab == ExtrasScreen.Tabs.Options and Options["Display play time"] end,
 		draw = function(self, shadowcolor)
 			local x = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 3
-			Drawing.drawText(x, self.box[2] - 12, Resources.ExtrasScreen.LabelTimer .. ":", Theme.COLORS[self.textColor], shadowcolor)
+			Drawing.drawText(x, self.box[2] - 13, Resources.ExtrasScreen.LabelTimer .. ":", Theme.COLORS[self.textColor], shadowcolor)
 		end,
 		onClick = function(self) ExtrasScreen.openEditTimerPrompt() end,
 	},
 	TimerRelocate = {
 		type = Constants.ButtonTypes.FULL_BORDER,
 		getText = function(self) return Resources.ExtrasScreen.ButtonRelocateTime end,
-		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 60, Constants.SCREEN.MARGIN + 111, 44, 11 },
+		box = { Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 60, Constants.SCREEN.MARGIN + 134, 44, 11 },
 		isVisible = function(self) return ExtrasScreen.currentTab == ExtrasScreen.Tabs.Options and Options["Display play time"] end,
 		onClick = function(self)
 			ExtrasScreen.relocateTimer()
@@ -152,7 +152,7 @@ function ExtrasScreen.createTabs()
 	for _, tuple in ipairs(tabs) do
 		ExtrasScreen.Buttons["Tab" .. tuple[1]] = {
 			type = Constants.ButtonTypes.NO_BORDER,
-			getText = function(self) return Resources.ExtrasScreen[tuple[2]] end,
+			getCustomText = function(self) return Resources.ExtrasScreen[tuple[2]] end,
 			tab = ExtrasScreen.Tabs[tuple[1]],
 			isSelected = false,
 			box = {
@@ -180,8 +180,8 @@ function ExtrasScreen.createTabs()
 				if self.isSelected then
 					gui.drawLine(x + 1, y + h, x + w - 1, y + h, bgColor) -- Remove bottom edge
 				end
-				local centeredOffsetX = Utils.getCenteredTextX(self:getText(), w) - 2
-				Drawing.drawText(x + centeredOffsetX, y, self:getText(), Theme.COLORS[self.textColor], shadowcolor)
+				local centeredOffsetX = Utils.getCenteredTextX(self:getCustomText(), w) - 2
+				Drawing.drawText(x + centeredOffsetX, y, self:getCustomText(), Theme.COLORS[self.textColor], shadowcolor)
 			end,
 			onClick = function(self)
 				ExtrasScreen.currentTab = self.tab
@@ -195,12 +195,11 @@ end
 
 function ExtrasScreen.createButtons()
 	local optionKeyMap = {
-		{"Show random ball picker", "OptionShowRandomBallPicker", },
-		{"Display repel usage", "OptionDisplayRepelUsage", },
-		{"Display pedometer", "OptionDisplayPedometer", },
-		{"Display play time", "OptionDisplayPlayTime", },
-		{"Display gender", "OptionDisplayGender", },
-		{"Animated Pokemon popout", "OptionAnimatedPokemonPopout", },
+		{ "Display repel usage", "OptionDisplayRepelUsage", },
+		{ "Display pedometer", "OptionDisplayPedometer", },
+		{ "Display play time", "OptionDisplayPlayTime", },
+		{ "Display gender", "OptionDisplayGender", },
+		{ "Animated Pokemon popout", "OptionAnimatedPokemonPopout", },
 	}
 
 	local startX = Constants.SCREEN.WIDTH + Constants.SCREEN.MARGIN + 5

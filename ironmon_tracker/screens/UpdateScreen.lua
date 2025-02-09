@@ -309,18 +309,14 @@ function UpdateScreen.beginAutoUpdate()
 	UpdateScreen.currentState = UpdateScreen.States.IN_PROGRESS
 	Program.redraw(true)
 
-	-- Don't bother saving tracked data if the player doesn't have a Pokemon yet
-	if Options["Auto save tracked game data"] and Tracker.getPokemon(1, true) ~= nil then
-		Tracker.saveData()
-	end
+	Tracker.AutoSave.saveToFile()
 
 	local updateStartDelay
 	if Main.IsOnBizhawk() then
 		-- Required to make Bizhawk release images so that they can be replaced
 		Drawing.allowCachedImages = false
-		Drawing.clearImageCache()
-		Drawing.clearImageCache(60) -- delay 1 second, then clear again
-		updateStartDelay = 60 * 2 + 2 -- delay 2 seconds, so images can uncache and unlock
+		Drawing.clearImageCache(60) -- delay 1 second
+		updateStartDelay = 60 * 5 + 2 -- delay a few seconds, so images can uncache and unlock
 	else
 		updateStartDelay = 15
 	end

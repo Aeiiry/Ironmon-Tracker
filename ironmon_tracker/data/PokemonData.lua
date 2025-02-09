@@ -11,6 +11,7 @@ PokemonData.Values = {
 PokemonData.Addresses = {
 	offsetBaseStats = 0x0,
 	offsetTypes = 0x6,
+	offsetCatchRate = 0x8,
 	offsetExpYield = 0x9,
 	offsetGenderRatio = 0x10,
 	offsetBaseFriendship = 0x12,
@@ -227,9 +228,18 @@ function PokemonData.buildData(forced)
 			local baseHPAttack = Memory.readword(addrOffset + PokemonData.Addresses.offsetBaseStats)
 			local baseDefenseSpeed = Memory.readword(addrOffset + PokemonData.Addresses.offsetBaseStats + 2)
 			local baseSpASpD = Memory.readword(addrOffset + PokemonData.Addresses.offsetBaseStats + 4)
-			pokemon.bstCalculated = Utils.getbits(baseHPAttack, 0, 8) + Utils.getbits(baseHPAttack, 8, 8)
-				+ Utils.getbits(baseDefenseSpeed, 0, 8) + Utils.getbits(baseDefenseSpeed, 8, 8)
-				+ Utils.getbits(baseSpASpD, 0, 8) + Utils.getbits(baseSpASpD, 8, 8)
+			pokemon.baseStats = {
+				hp = Utils.getbits(baseHPAttack, 0, 8),
+				atk = Utils.getbits(baseHPAttack, 8, 8),
+				def = Utils.getbits(baseDefenseSpeed, 0, 8),
+				spe = Utils.getbits(baseDefenseSpeed, 8, 8),
+				spa = Utils.getbits(baseSpASpD, 0, 8),
+				spd = Utils.getbits(baseSpASpD, 8, 8)
+			}
+			pokemon.bstCalculated = 0
+			for _, baseStat in pairs(pokemon.baseStats) do
+				pokemon.bstCalculated = pokemon.bstCalculated + baseStat
+			end
 
 			-- Types (2 bytes)
 			local typesData = Memory.readword(addrOffset + PokemonData.Addresses.offsetTypes)
@@ -239,6 +249,9 @@ function PokemonData.buildData(forced)
 				PokemonData.TypeIndexMap[typeOne],
 				typeOne ~= typeTwo and PokemonData.TypeIndexMap[typeTwo] or PokemonData.Types.EMPTY,
 			}
+
+			--Catch Rate (1 byte)
+			pokemon.catchRate = Memory.readbyte(addrOffset + PokemonData.Addresses.offsetCatchRate)
 
 			-- Exp Yield
 			if PokemonData.Addresses.sizeofExpYield == 2 then
@@ -294,13 +307,15 @@ function PokemonData.getTypeResource(typename)
 	return Resources.Game.PokemonTypes[typename] or Resources.Game.PokemonTypes.unknown
 end
 
---- @return integer abilityId The abilityId of the Pokémon, or 0 if it doesn't exist
-function PokemonData.getAbilityId(pokemonID, abilityNum)
-	if abilityNum == nil or not PokemonData.isValid(pokemonID) then
+---@param pokemonID number
+---@param abilityIndex number Specify 0 for the first ability or 1 for the second ability
+---@return integer abilityId The abilityId of the Pokémon, or 0 if it doesn't exist
+function PokemonData.getAbilityId(pokemonID, abilityIndex)
+	if abilityIndex == nil or not PokemonData.isValid(pokemonID) then
 		return 0
 	end
 	local pokemon = PokemonData.Pokemon[pokemonID]
-	return pokemon.abilities[abilityNum + 1] or 0 -- abilityNum stored from memory as [0 or 1]
+	return pokemon.abilities[abilityIndex + 1] or 0 -- abilityNum stored from memory as [0 or 1]
 end
 
 ---Returns true if the pokemonId is a valid, existing id of a pokemon in PokemonData.Pokemon
@@ -416,6 +431,142 @@ function PokemonData.getEffectiveness(pokemonID)
 	end
 
 	return effectiveness
+end
+
+---Returns whole number between 0 and 100 representing the percent likelihood to catch a pokemon
+---@param pokemonID number
+---@param hpMax number
+---@param hpCurrent number
+---@param level number? Optional, the Pokémon level, used only for Nest Ball; defaults to 5
+---@param status number? Optional, defaults to "None"
+---@param ball number? Optional, defaults to Poké Ball (item id = 4)
+---@param terrain number? Optional, defaults to 0 (no terrain); use 3 for UNDERWATER
+---@param battleTurn number? Optional, defaults to 0; first turn of a battle
+---@return number
+function PokemonData.calcCatchRate(pokemonID, hpMax, hpCurrent, level, status, ball, terrain, battleTurn)
+	if not PokemonData.isValid(pokemonID) or hpMax <= 0 or hpCurrent <= 0 then
+		return 0
+	end
+	level = level or 5
+	status = status or MiscData.StatusType.None
+	ball = ball or 4
+	terrain = terrain or 0
+	battleTurn = battleTurn or 0
+
+	-- Calculations based off of: https://bulbapedia.bulbagarden.net/wiki/Catch_rate#Capture_method_(Generation_III-IV)
+
+	-- Estimate wild Pokémon's HP percent; round to nearest 10th
+	local estimatedCurrHP = math.floor(math.ceil(hpCurrent / hpMax * 10) / 10 * hpMax)
+
+	-- Changing to more closely resemble the actual in-game formula
+	local hpMultiplier = (hpMax * 3 - estimatedCurrHP * 2) / (hpMax * 3)
+
+	-- Determine base catch rate
+	local pokemon = PokemonData.Pokemon[pokemonID]
+	local baseCatchRate = pokemon.catchRate or 0
+
+	-- Determine ball type bonus multiplier
+	local ballBonusMap = {
+		[1] = 255, -- Master Ball
+		[2] = 20, -- Ultra Ball
+		[3] = 15, -- Great Ball
+		[4] = 10, -- Poke Ball
+		[5] = 15, -- Safari Ball
+		[6] = 30, -- Net Ball; only for WATER or BUG types
+		[7] = 35, -- Dive Ball; only when map type is UNDERWATER
+		[8] = 40, -- Nest Ball; subtract level of enemy, floor is 10
+		[9] = 30, -- Repeat Ball; only if pokemon is flagged as caught already
+		[10] = 10, -- Timer Ball; add turn counter, caps at 40
+		[11] = 10, -- Luxury Ball
+		[12] = 10, -- Premier Ball
+	}
+	local ballBonus
+	if ball <= 5 or ball >= 11 then
+		ballBonus = ballBonusMap[ball] or 10 -- default: poké ball
+	elseif ball == 6 and (pokemon.types[1] == PokemonData.Types.WATER or pokemon.types[2] == PokemonData.Types.WATER or pokemon.types[1] == PokemonData.Types.BUG or pokemon.types[2] == PokemonData.Types.BUG) then
+		ballBonus = ballBonusMap[ball]
+	elseif ball == 7 and terrain == 3 then -- terrain 3: UNDERWATER
+		ballBonus = ballBonusMap[ball]
+	elseif ball == 8 then
+		ballBonus = math.max(10, 40 - level)
+	elseif ball == 9 then
+		local dexAddr = Utils.getSaveBlock2Addr() + Program.Addresses.offsetPokedex + Program.Addresses.offsetPokedexOwned
+		local bitIndex = math.floor((pokemonID - 1) / 8)
+		local bitRemainder = (pokemonID - 1) % 8
+		local dexValue = Memory.readbyte(dexAddr + bitIndex)
+		if Utils.getbits(dexValue, bitRemainder, 1) == 1 then -- if 1, has caught the mon previously
+			ballBonus = ballBonusMap[ball]
+		end
+	elseif ball == 10 then
+		ballBonus = math.min(10 + battleTurn, 40)
+	end
+	ballBonus = (ballBonus or 10) / 10
+
+	-- Determine status bonus multiplier
+	local statusBonusMap = {
+		[MiscData.StatusType.None] = 1,
+		[MiscData.StatusType.Burn] = 1.5,
+		[MiscData.StatusType.Freeze] = 2,
+		[MiscData.StatusType.Paralyze] = 1.5,
+		[MiscData.StatusType.Poison] = 1.5,
+		[MiscData.StatusType.Toxic] = 1.5,
+		[MiscData.StatusType.Sleep] = 2,
+	}
+	local statusBonus
+	-- Note: In R/S, toxic does not increase catch rate
+	if status == MiscData.StatusType.Toxic and (GameSettings.game == 1 or GameSettings.game == 2) then
+		statusBonus = 1
+	else
+		statusBonus = statusBonusMap[status] or 1 -- default: none
+	end
+
+	--Number between 0 and a lot; 255+ means guaranteed catch
+	local rawCatchRate = math.floor(math.floor(baseCatchRate * ballBonus * hpMultiplier) * statusBonus)
+	local processedCatchRate = 0
+	local percentage = 0
+	if rawCatchRate <=0 then
+		percentage = 0
+	elseif rawCatchRate > 254 then
+		percentage = 100
+	else
+		--Process rate is between 0 and 65535, represents chance of a 'ball shake'
+		processedCatchRate = math.floor(1048560 / math.floor(math.sqrt(math.floor(math.sqrt(math.floor(16711680/rawCatchRate))))))
+		processedCatchRate = math.floor(processedCatchRate / 65535 * 100) / 100
+		--4 Ball shakes to catch. Technically comes out to dividing the original rate by 255, but using this formula to keep the cacluation consistent with the actual game's method
+		percentage = math.floor(processedCatchRate * processedCatchRate * processedCatchRate * processedCatchRate * 100)
+	end
+	if percentage < 0 then
+		return 0
+	elseif percentage > 100 then
+		return 100
+	else
+		return percentage
+	end
+end
+
+---Reads from the game data all of the level-up moves learned by a Pokémon species
+---@param pokemonID number
+---@return table learnedMoves A list moves, each entry as a table: { id = number, level = number }
+function PokemonData.readLevelUpMoves(pokemonID)
+	local learnedMoves = {}
+	if not PokemonData.isValid(pokemonID) then
+		return learnedMoves
+	end
+	-- https://github.com/pret/pokefirered/blob/d2c592030d78d1a46df1cba562a3c7af677dbf21/src/data/pokemon/level_up_learnsets.h
+	local LEVEL_UP_END = 0xFFFF
+	-- gLevelUpLearnsets is an array of addresses for all Pokémon species; each entry is a 4 byte address
+	local levelUpLearnsetPtr = Memory.readdword(GameSettings.gLevelUpLearnsets + (pokemonID * 4))
+	for i=0, 50, 1 do -- MAX of 51 iterations, as a failsafe
+		-- Each entry is 2 bytes formatted as: #define LEVEL_UP_MOVE(lvl, move) ((lvl << 9) | move)
+		local levelUpMove = Memory.readword(levelUpLearnsetPtr + (i * 2))
+		if levelUpMove == LEVEL_UP_END then
+			break
+		end
+		local moveId = Utils.getbits(levelUpMove, 0, 9)
+		local level = Utils.getbits(levelUpMove, 9, 7)
+		table.insert(learnedMoves, { id = moveId, level = level })
+	end
+	return learnedMoves
 end
 
 PokemonData.TypeIndexMap = {
